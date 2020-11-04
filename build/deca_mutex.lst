@@ -1,0 +1,236 @@
+ARM GAS  /tmp/ccpRJ14L.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"deca_mutex.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.decamutexon,"ax",%progbits
+  18              		.align	1
+  19              		.global	decamutexon
+  20              		.arch armv7e-m
+  21              		.syntax unified
+  22              		.thumb
+  23              		.thumb_func
+  24              		.fpu fpv4-sp-d16
+  26              	decamutexon:
+  27              	.LFB133:
+  28              		.file 1 "Middlewares/Decawave/platform/deca_mutex.c"
+   1:Middlewares/Decawave/platform/deca_mutex.c **** /*! ----------------------------------------------------------------------------
+   2:Middlewares/Decawave/platform/deca_mutex.c ****  * @file	deca_mutex.c
+   3:Middlewares/Decawave/platform/deca_mutex.c ****  * @brief	IRQ interface / mutex implementation
+   4:Middlewares/Decawave/platform/deca_mutex.c ****  *
+   5:Middlewares/Decawave/platform/deca_mutex.c ****  * @attention
+   6:Middlewares/Decawave/platform/deca_mutex.c ****  *
+   7:Middlewares/Decawave/platform/deca_mutex.c ****  * Copyright 2015 (c) DecaWave Ltd, Dublin, Ireland.
+   8:Middlewares/Decawave/platform/deca_mutex.c ****  *
+   9:Middlewares/Decawave/platform/deca_mutex.c ****  * All rights reserved.
+  10:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  11:Middlewares/Decawave/platform/deca_mutex.c ****  */
+  12:Middlewares/Decawave/platform/deca_mutex.c **** 
+  13:Middlewares/Decawave/platform/deca_mutex.c **** #include "deca_device_api.h"
+  14:Middlewares/Decawave/platform/deca_mutex.c **** #include "port.h"
+  15:Middlewares/Decawave/platform/deca_mutex.c **** // ---------------------------------------------------------------------------
+  16:Middlewares/Decawave/platform/deca_mutex.c **** //
+  17:Middlewares/Decawave/platform/deca_mutex.c **** // NB: The purpose of this file is to provide for microprocessor interrupt enable/disable, this is 
+  18:Middlewares/Decawave/platform/deca_mutex.c **** //     controlling mutual exclusion from critical sections in the code where interrupts and backgro
+  19:Middlewares/Decawave/platform/deca_mutex.c **** //     processing may interact.  The code using this is kept to a minimum and the disabling time is
+  20:Middlewares/Decawave/platform/deca_mutex.c **** //     kept to a minimum, so blanket interrupt disable may be the easiest way to provide this.  But
+  21:Middlewares/Decawave/platform/deca_mutex.c **** //     minimum those interrupts coming from the decawave device should be disabled/re-enabled by th
+  22:Middlewares/Decawave/platform/deca_mutex.c **** //
+  23:Middlewares/Decawave/platform/deca_mutex.c **** //     In porting this to a particular microprocessor, the implementer may choose to use #defines i
+  24:Middlewares/Decawave/platform/deca_mutex.c **** //     deca_irq.h include file to map these calls transparently to the target system.  Alternativel
+  25:Middlewares/Decawave/platform/deca_mutex.c **** //     appropriate code may be embedded in the functions provided below.
+  26:Middlewares/Decawave/platform/deca_mutex.c **** //
+  27:Middlewares/Decawave/platform/deca_mutex.c **** //     This mutex dependent on HW port.
+  28:Middlewares/Decawave/platform/deca_mutex.c **** //	   If HW port uses EXT_IRQ line to receive ready/busy status from DW1000 then mutex should use t
+  29:Middlewares/Decawave/platform/deca_mutex.c **** //     If HW port not use EXT_IRQ line (i.e. SW polling) then no necessary for decamutex(on/off)
+  30:Middlewares/Decawave/platform/deca_mutex.c **** //
+ARM GAS  /tmp/ccpRJ14L.s 			page 2
+
+
+  31:Middlewares/Decawave/platform/deca_mutex.c **** //	   For critical section use this mutex instead
+  32:Middlewares/Decawave/platform/deca_mutex.c **** //	   __save_intstate()
+  33:Middlewares/Decawave/platform/deca_mutex.c **** //     __restore_intstate()
+  34:Middlewares/Decawave/platform/deca_mutex.c **** // ---------------------------------------------------------------------------
+  35:Middlewares/Decawave/platform/deca_mutex.c **** 
+  36:Middlewares/Decawave/platform/deca_mutex.c **** 
+  37:Middlewares/Decawave/platform/deca_mutex.c **** /*! -----------------------------------------------------------------------------------------------
+  38:Middlewares/Decawave/platform/deca_mutex.c ****  * Function: decamutexon()
+  39:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  40:Middlewares/Decawave/platform/deca_mutex.c ****  * Description: This function should disable interrupts. This is called at the start of a critical 
+  41:Middlewares/Decawave/platform/deca_mutex.c ****  * It returns the irq state before disable, this value is used to re-enable in decamutexoff call
+  42:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  43:Middlewares/Decawave/platform/deca_mutex.c ****  * Note: The body of this function is defined in deca_mutex.c and is platform specific
+  44:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  45:Middlewares/Decawave/platform/deca_mutex.c ****  * input parameters:	
+  46:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  47:Middlewares/Decawave/platform/deca_mutex.c ****  * output parameters
+  48:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  49:Middlewares/Decawave/platform/deca_mutex.c ****  * returns the state of the DW1000 interrupt
+  50:Middlewares/Decawave/platform/deca_mutex.c ****  */
+  51:Middlewares/Decawave/platform/deca_mutex.c **** decaIrqStatus_t decamutexon(void)           
+  52:Middlewares/Decawave/platform/deca_mutex.c **** {
+  29              		.loc 1 52 1
+  30              		.cfi_startproc
+  31              		@ args = 0, pretend = 0, frame = 8
+  32              		@ frame_needed = 1, uses_anonymous_args = 0
+  33 0000 80B5     		push	{r7, lr}
+  34              	.LCFI0:
+  35              		.cfi_def_cfa_offset 8
+  36              		.cfi_offset 7, -8
+  37              		.cfi_offset 14, -4
+  38 0002 82B0     		sub	sp, sp, #8
+  39              	.LCFI1:
+  40              		.cfi_def_cfa_offset 16
+  41 0004 00AF     		add	r7, sp, #0
+  42              	.LCFI2:
+  43              		.cfi_def_cfa_register 7
+  53:Middlewares/Decawave/platform/deca_mutex.c **** 	decaIrqStatus_t s = port_GetEXT_IRQStatus();
+  44              		.loc 1 53 22
+  45 0006 FFF7FEFF 		bl	port_GetEXT_IRQStatus
+  46 000a 0346     		mov	r3, r0
+  47              		.loc 1 53 18
+  48 000c 7B60     		str	r3, [r7, #4]
+  54:Middlewares/Decawave/platform/deca_mutex.c **** 
+  55:Middlewares/Decawave/platform/deca_mutex.c **** 	if(s) {
+  49              		.loc 1 55 4
+  50 000e 7B68     		ldr	r3, [r7, #4]
+  51 0010 002B     		cmp	r3, #0
+  52 0012 01D0     		beq	.L2
+  56:Middlewares/Decawave/platform/deca_mutex.c **** 		port_DisableEXT_IRQ(); //disable the external interrupt line
+  53              		.loc 1 56 3
+  54 0014 FFF7FEFF 		bl	port_DisableEXT_IRQ
+  55              	.L2:
+  57:Middlewares/Decawave/platform/deca_mutex.c **** 	}
+  58:Middlewares/Decawave/platform/deca_mutex.c **** 	return s ;   // return state before disable, value is used to re-enable in decamutexoff call
+  56              		.loc 1 58 9
+  57 0018 7B68     		ldr	r3, [r7, #4]
+ARM GAS  /tmp/ccpRJ14L.s 			page 3
+
+
+  59:Middlewares/Decawave/platform/deca_mutex.c **** }
+  58              		.loc 1 59 1
+  59 001a 1846     		mov	r0, r3
+  60 001c 0837     		adds	r7, r7, #8
+  61              	.LCFI3:
+  62              		.cfi_def_cfa_offset 8
+  63 001e BD46     		mov	sp, r7
+  64              	.LCFI4:
+  65              		.cfi_def_cfa_register 13
+  66              		@ sp needed
+  67 0020 80BD     		pop	{r7, pc}
+  68              		.cfi_endproc
+  69              	.LFE133:
+  71              		.section	.text.decamutexoff,"ax",%progbits
+  72              		.align	1
+  73              		.global	decamutexoff
+  74              		.syntax unified
+  75              		.thumb
+  76              		.thumb_func
+  77              		.fpu fpv4-sp-d16
+  79              	decamutexoff:
+  80              	.LFB134:
+  60:Middlewares/Decawave/platform/deca_mutex.c **** 
+  61:Middlewares/Decawave/platform/deca_mutex.c **** /*! -----------------------------------------------------------------------------------------------
+  62:Middlewares/Decawave/platform/deca_mutex.c ****  * Function: decamutexoff()
+  63:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  64:Middlewares/Decawave/platform/deca_mutex.c ****  * Description: This function should re-enable interrupts, or at least restore their state as retur
+  65:Middlewares/Decawave/platform/deca_mutex.c ****  * This is called at the end of a critical section
+  66:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  67:Middlewares/Decawave/platform/deca_mutex.c ****  * Note: The body of this function is defined in deca_mutex.c and is platform specific
+  68:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  69:Middlewares/Decawave/platform/deca_mutex.c ****  * input parameters:	
+  70:Middlewares/Decawave/platform/deca_mutex.c ****  * @param s - the state of the DW1000 interrupt as returned by decamutexon
+  71:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  72:Middlewares/Decawave/platform/deca_mutex.c ****  * output parameters
+  73:Middlewares/Decawave/platform/deca_mutex.c ****  *
+  74:Middlewares/Decawave/platform/deca_mutex.c ****  * returns the state of the DW1000 interrupt
+  75:Middlewares/Decawave/platform/deca_mutex.c ****  */
+  76:Middlewares/Decawave/platform/deca_mutex.c **** void decamutexoff(decaIrqStatus_t s)        // put a function here that re-enables the interrupt at
+  77:Middlewares/Decawave/platform/deca_mutex.c **** {
+  81              		.loc 1 77 1
+  82              		.cfi_startproc
+  83              		@ args = 0, pretend = 0, frame = 8
+  84              		@ frame_needed = 1, uses_anonymous_args = 0
+  85 0000 80B5     		push	{r7, lr}
+  86              	.LCFI5:
+  87              		.cfi_def_cfa_offset 8
+  88              		.cfi_offset 7, -8
+  89              		.cfi_offset 14, -4
+  90 0002 82B0     		sub	sp, sp, #8
+  91              	.LCFI6:
+  92              		.cfi_def_cfa_offset 16
+  93 0004 00AF     		add	r7, sp, #0
+  94              	.LCFI7:
+  95              		.cfi_def_cfa_register 7
+  96 0006 7860     		str	r0, [r7, #4]
+  78:Middlewares/Decawave/platform/deca_mutex.c **** 	if(s) { //need to check the port state as we can't use level sensitive interrupt on the STM ARM
+ARM GAS  /tmp/ccpRJ14L.s 			page 4
+
+
+  97              		.loc 1 78 4
+  98 0008 7B68     		ldr	r3, [r7, #4]
+  99 000a 002B     		cmp	r3, #0
+ 100 000c 01D0     		beq	.L6
+  79:Middlewares/Decawave/platform/deca_mutex.c **** 		port_EnableEXT_IRQ();
+ 101              		.loc 1 79 3
+ 102 000e FFF7FEFF 		bl	port_EnableEXT_IRQ
+ 103              	.L6:
+  80:Middlewares/Decawave/platform/deca_mutex.c **** 	}
+  81:Middlewares/Decawave/platform/deca_mutex.c **** }
+ 104              		.loc 1 81 1
+ 105 0012 00BF     		nop
+ 106 0014 0837     		adds	r7, r7, #8
+ 107              	.LCFI8:
+ 108              		.cfi_def_cfa_offset 8
+ 109 0016 BD46     		mov	sp, r7
+ 110              	.LCFI9:
+ 111              		.cfi_def_cfa_register 13
+ 112              		@ sp needed
+ 113 0018 80BD     		pop	{r7, pc}
+ 114              		.cfi_endproc
+ 115              	.LFE134:
+ 117              		.text
+ 118              	.Letext0:
+ 119              		.file 2 "Middlewares/Decawave/decadriver/deca_device_api.h"
+ 120              		.file 3 "/home/ilian/opt/gcc-arm-none-eabi-9-2020-q2-update/arm-none-eabi/include/machine/_default
+ 121              		.file 4 "/home/ilian/opt/gcc-arm-none-eabi-9-2020-q2-update/arm-none-eabi/include/sys/_stdint.h"
+ 122              		.file 5 "/home/ilian/opt/gcc-arm-none-eabi-9-2020-q2-update/lib/gcc/arm-none-eabi/9.3.1/include/st
+ 123              		.file 6 "/home/ilian/opt/gcc-arm-none-eabi-9-2020-q2-update/arm-none-eabi/include/sys/_types.h"
+ 124              		.file 7 "/home/ilian/opt/gcc-arm-none-eabi-9-2020-q2-update/arm-none-eabi/include/sys/reent.h"
+ 125              		.file 8 "/home/ilian/opt/gcc-arm-none-eabi-9-2020-q2-update/arm-none-eabi/include/sys/lock.h"
+ 126              		.file 9 "/home/ilian/opt/gcc-arm-none-eabi-9-2020-q2-update/arm-none-eabi/include/stdlib.h"
+ 127              		.file 10 "/home/ilian/opt/gcc-arm-none-eabi-9-2020-q2-update/arm-none-eabi/include/math.h"
+ 128              		.file 11 "Drivers/CMSIS/Include/core_cm4.h"
+ 129              		.file 12 "Drivers/CMSIS/Device/ST/STM32L4xx/Include/system_stm32l4xx.h"
+ 130              		.file 13 "Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_def.h"
+ 131              		.file 14 "Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_flash.h"
+ 132              		.file 15 "Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal.h"
+ 133              		.file 16 "Middlewares/Decawave/platform/port.h"
+ARM GAS  /tmp/ccpRJ14L.s 			page 5
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 deca_mutex.c
+     /tmp/ccpRJ14L.s:18     .text.decamutexon:0000000000000000 $t
+     /tmp/ccpRJ14L.s:26     .text.decamutexon:0000000000000000 decamutexon
+     /tmp/ccpRJ14L.s:72     .text.decamutexoff:0000000000000000 $t
+     /tmp/ccpRJ14L.s:79     .text.decamutexoff:0000000000000000 decamutexoff
+
+UNDEFINED SYMBOLS
+port_GetEXT_IRQStatus
+port_DisableEXT_IRQ
+port_EnableEXT_IRQ
