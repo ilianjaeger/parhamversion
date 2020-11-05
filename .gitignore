@@ -24,6 +24,7 @@ README.pdf
 /downloads/
 /tools/
 /build/
+build/
 # local changes only
 make/local.mk
 
