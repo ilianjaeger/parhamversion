@@ -90,7 +90,7 @@ typedef enum
 #define RX_BUF_LEN 24
 
 /* UWB microsecond (uus) to device time unit (dtu, around 15.65 ps) conversion factor.
- * 1 uus = 512 / 499.2 �s and 1 �s = 499.2 * 128 dtu. */
+ * 1 uus = 512 / 499.2 ï¿½s and 1 ï¿½s = 499.2 * 128 dtu. */
 #define UUS_TO_DWT_TIME 65536
 
 /* Delay between frames, in UWB microseconds. See NOTE 4 below. */
@@ -142,6 +142,8 @@ typedef enum
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
+
+USART_HandleTypeDef husart4;
 
 /* USER CODE BEGIN PV */
 
@@ -606,6 +608,29 @@ static void MX_GPIO_Init(void)
 	
   HAL_NVIC_SetPriority(EXTI2_IRQn, 4, 0);
   //HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
+}
+
+static void MX_USART_Init(void)
+{
+  USART_InitTypeDef USART_InitStruct = {0};
+
+  /* UART Clock Enable */
+  __HAL_RCC_UART4_CLK_ENABLE();
+
+  /* UART Register Typedef Configuration */
+  husart4.Instance = USART1;
+
+  /* UART Init Parameter Configuration */
+  husart4.Init.BaudRate = 0;                                   //TODO
+  husart4.Init.WordLength = USART_WORDLENGTH_8B;               //TODO
+  husart4.Init.StopBits = USART_STOPBITS_1;
+  husart4.Init.Parity = USART_PARITY_ODD;
+  husart4.Init.Mode = USART_MODE_TX;
+  //husart4.Init.HwFlowCtl = USART_HWCONTROL_NONE;
+  //husart4.Init.OverSampling = USART_OVERSAMPLING_16;
+  //husart4.Init.OneBitSampling = USART_ONE_BIT_SAMPLE_DISABLE;
+  //husart4.Init.ClockPrescaler = USART_PRESCALER_DIV1;           //TODO
 
 }
 
