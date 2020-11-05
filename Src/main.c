@@ -623,9 +623,9 @@ static void MX_USART_Init(void)
 
   /* UART Init Parameter Configuration */
   husart4.Init.BaudRate = 0;                                   //TODO
-  husart4.Init.WordLength = USART_WORDLENGTH_8B;               //TODO
-  husart4.Init.StopBits = USART_STOPBITS_1;
-  husart4.Init.Parity = USART_PARITY_ODD;
+  //husart4.Init.WordLength = USART_WORDLENGTH_8B;               //TODO
+  //husart4.Init.StopBits = USART_STOPBITS_1;
+  //husart4.Init.Parity = USART_PARITY_ODD;
   //husart4.Init.Mode = USART_MODE_TX;
   //husart4.Init.HwFlowCtl = USART_HWCONTROL_NONE;
   //husart4.Init.OverSampling = USART_OVERSAMPLING_16;
