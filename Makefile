@@ -53,6 +53,8 @@ Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_exti.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_usart.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_usart_ex.c \
 Src/system_stm32l4xx.c  \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
