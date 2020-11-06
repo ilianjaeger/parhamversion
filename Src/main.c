@@ -609,6 +609,20 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI2_IRQn, 4, 0);
   //HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
+  /* Configure GPIO pin: USART3 TX Pin */
+  GPIO_InitStruct.Pin = USART3_TX_GPIO_Pin;
+  GPIO_InitStruct.Mode = GPIO_AF7_USART3;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(USART3_TX_GPIO_Port, &GPIO_InitStruct);
+
+  /* Configure GPIO pin: USART3 RX Pin */
+  GPIO_InitStruct.Pin = USART3_RX_GPIO_Pin;
+  GPIO_InitStruct.Mode = GPIO_AF7_USART3;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(USART3_RX_GPIO_Port, &GPIO_InitStruct);
+
 }
 /**
   * @brief USART Initialization Function
