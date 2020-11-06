@@ -252,6 +252,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_USART_Init(void);
 
 /* USER CODE BEGIN PFP */
 
@@ -330,6 +331,7 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
+  MX_USART_Init();
   /* USER CODE BEGIN 2 */
 
 	HAL_Delay (3000);
@@ -373,6 +375,9 @@ int main(void)
 				ranges[numRanged] = distance;
 				printf("Measurement: %d, Distance: %f, Time: %llu\n",numRanged,distance,t2);
 				numRanged++;
+
+        //send data over USART3
+        HAL_USART_Transmit(&husart3, &ranges[numRanged], sizeof(ranges[numRanged]), 0x000000FFU);
 
 				state = RECEIVE_I;
 				break; 
@@ -650,6 +655,10 @@ static void MX_USART_Init(void)
   husart3.Init.CLKPolarity = USART_POLARITY_LOW;              // Must be zero in asynchronous mode
   husart3.Init.CLKPhase = USART_PHASE_1EDGE;                  // Must be zero in asynchronous mode
   husart3.Init.CLKLastBit = USART_LASTBIT_DISABLE;
+  if (HAL_USART_Init(&husart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /* USER CODE BEGIN 4 */
