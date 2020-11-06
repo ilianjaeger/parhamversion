@@ -377,7 +377,7 @@ int main(void)
 				numRanged++;
 
         //send data over USART3
-        HAL_USART_Transmit(&husart3, &ranges[numRanged], sizeof(ranges[numRanged]), 0x000000FFU);
+        HAL_USART_Transmit(&husart3, (uint8_t*) &ranges[numRanged], 1U, 0x000000FFU);
 
 				state = RECEIVE_I;
 				break; 
@@ -616,16 +616,18 @@ static void MX_GPIO_Init(void)
 
   /* Configure GPIO pin: USART3 TX Pin */
   GPIO_InitStruct.Pin = USART3_TX_GPIO_Pin;
-  GPIO_InitStruct.Mode = GPIO_AF7_USART3;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
   HAL_GPIO_Init(USART3_TX_GPIO_Port, &GPIO_InitStruct);
 
   /* Configure GPIO pin: USART3 RX Pin */
   GPIO_InitStruct.Pin = USART3_RX_GPIO_Pin;
-  GPIO_InitStruct.Mode = GPIO_AF7_USART3;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
   HAL_GPIO_Init(USART3_RX_GPIO_Port, &GPIO_InitStruct);
 
 }
@@ -655,6 +657,8 @@ static void MX_USART_Init(void)
   husart3.Init.CLKPolarity = USART_POLARITY_LOW;              // Must be zero in asynchronous mode
   husart3.Init.CLKPhase = USART_PHASE_1EDGE;                  // Must be zero in asynchronous mode
   husart3.Init.CLKLastBit = USART_LASTBIT_DISABLE;
+
+  /* Initialize USART */
   if (HAL_USART_Init(&husart3) != HAL_OK)
   {
     Error_Handler();
