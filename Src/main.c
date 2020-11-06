@@ -143,7 +143,7 @@ SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
 
-USART_HandleTypeDef husart4;
+USART_HandleTypeDef husart3;
 
 /* USER CODE BEGIN PV */
 
@@ -610,28 +610,32 @@ static void MX_GPIO_Init(void)
   //HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
 }
-
+/**
+  * @brief USART Initialization Function
+  * @param None
+  * @retval None
+  */
+// Pins: PB10 and PB11
+// GPIO alternate function mode: AF7
+// PB10 <=> USART3_TX
+// PB11 <=> USART3_RX
 static void MX_USART_Init(void)
 {
-  USART_InitTypeDef USART_InitStruct = {0};
+  /* USART3 Clock Enable */
+  __HAL_RCC_USART3_CLK_ENABLE();
 
-  /* UART Clock Enable */
-  __HAL_RCC_UART4_CLK_ENABLE();
-
-  /* UART Register Typedef Configuration */
-  husart4.Instance = USART1;
+  /* USART3 Register Typedef Configuration */
+  husart3.Instance = USART3;
 
   /* UART Init Parameter Configuration */
-  husart4.Init.BaudRate = 0;                                  //TODO
-  husart4.Init.WordLength = USART_WORDLENGTH_8B;              //TODO
-  husart4.Init.StopBits = USART_STOPBITS_1;
-  husart4.Init.Parity = USART_PARITY_ODD;
-  husart4.Init.Mode = USART_MODE_TX;
-  husart4.Init.CLKPolarity = USART_POLARITY_LOW;              // Must be zero in asynchronous mode
-  husart4.Init.CLKPhase = USART_PHASE_1EDGE;                  // Must be zero in asynchronous mode
-  husart4.Init.CLKLastBit = ;
-  husart4.Init.ClockPrescaler = USART_PRESCALER_DIV1;           //TODO
-
+  husart3.Init.BaudRate = 115200;                             //TODO
+  husart3.Init.WordLength = USART_WORDLENGTH_8B;              //TODO
+  husart3.Init.StopBits = USART_STOPBITS_1;
+  husart3.Init.Parity = USART_PARITY_NONE;
+  husart3.Init.Mode = USART_MODE_TX;
+  husart3.Init.CLKPolarity = USART_POLARITY_LOW;              // Must be zero in asynchronous mode
+  husart3.Init.CLKPhase = USART_PHASE_1EDGE;                  // Must be zero in asynchronous mode
+  husart3.Init.CLKLastBit = USART_LASTBIT_DISABLE;
 }
 
 /* USER CODE BEGIN 4 */
