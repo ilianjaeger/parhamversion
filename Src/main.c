@@ -70,7 +70,7 @@ typedef enum
 #define RANGE_BUF_SIZE 2000
 
 /* Number of Measurements to perform in each run */
-#define NUM_MEASUREMENTS 200
+#define NUM_MEASUREMENTS 3
 
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
 #define TX_ANT_DLY 16436
@@ -226,6 +226,8 @@ static uint64 final_tx_ts;
 /* Hold copies of computed time of flight and distance here for reference so that it can be examined at a debug breakpoint. */
 static double tof;
 static double distance;
+static uint8_t msg = 0x0A;
+
 	
 /* timing variables to determine the ranging period */
 uint64_t t1 = 0;
@@ -390,6 +392,10 @@ int main(void)
 				MX_DWM_Init (0);	
 			
 				initiator_go(numMeasure);
+
+        // write something to the USART line for debug purposes
+        HAL_USART_Transmit(&husart3, &msg, 1U, 0x000000FFU);
+
 				
 				state = IDLE ;
 				break; 
