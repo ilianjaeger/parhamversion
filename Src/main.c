@@ -226,7 +226,7 @@ static uint64 final_tx_ts;
 /* Hold copies of computed time of flight and distance here for reference so that it can be examined at a debug breakpoint. */
 static double tof;
 static double distance;
-static uint8_t msg = 0x0A;
+static uint8_t msg = 0xFF;
 
 	
 /* timing variables to determine the ranging period */
@@ -388,13 +388,14 @@ int main(void)
 				/* Initilizing Decawave module for initiator configuration */
 				HAL_NVIC_DisableIRQ (EXTI2_IRQn);
 				printf("Initiator state\n");
-	
+    
 				MX_DWM_Init (0);	
 			
 				initiator_go(numMeasure);
 
         // write something to the USART line for debug purposes
-        HAL_USART_Transmit(&husart3, &msg, 1U, 0x000000FFU);
+        printf("msg address:%x\n", (int) &msg);
+        HAL_USART_Transmit(&husart3, &msg, 1, 0x000000FFU);
 
 				
 				state = IDLE ;
