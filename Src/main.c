@@ -392,7 +392,6 @@ int main(void)
 				initiator_go(numMeasure);
 
         // write something to the USART line for debug purposes
-        printf("msg address:%x\n", (int) &msg);
         HAL_UART_Transmit(&huart3, &msg, 1, 0x000000FFU);
 
 				

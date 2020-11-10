@@ -746,7 +746,6 @@ HAL_StatusTypeDef HAL_USART_UnRegisterCallback(USART_HandleTypeDef *husart, HAL_
 @endverbatim
   * @{
   */
-#include<stdio.h>
 /**
   * @brief  Simplex send an amount of data in blocking mode.
   * @note   When UART parity is not enabled (PCE = 0), and Word Length is configured to 9 bits (M1-M0 = 01),
@@ -763,8 +762,6 @@ HAL_StatusTypeDef HAL_USART_Transmit(USART_HandleTypeDef *husart, uint8_t *pTxDa
   uint8_t  *ptxdata8bits;
   uint16_t *ptxdata16bits;
   uint32_t tickstart;
-  printf("pTxData address: %x\n", pTxData);
-  printf("pTxData value: %u\n", *pTxData);
 
   if (husart->State == HAL_USART_STATE_READY)
   {
@@ -811,7 +808,6 @@ HAL_StatusTypeDef HAL_USART_Transmit(USART_HandleTypeDef *husart, uint8_t *pTxDa
       }
       else
       {
-        printf("TDR:%u\n",*ptxdata8bits );
         husart->Instance->TDR = (uint8_t)(*ptxdata8bits & 0xFFU);
         ptxdata8bits++;
       }
