@@ -253,6 +253,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
+static uint8_t msbs(double dbl);
+static uint8_t lsbs(double dbl);
 
 /* USER CODE BEGIN PFP */
 
@@ -377,7 +379,12 @@ int main(void)
 				numRanged++;
 
         //send data over USART3
-        HAL_USART_Transmit(&huart3, (uint8_t*) &ranges[numRanged], 1U, 0x000000FFU);
+        
+        //send data in bytes
+        uint16_t msg = (uint16_t) (distance * 1000);
+        uint8_t *msgBytes = (uint8_t *) &msg;
+        //transmit
+        HAL_UART_Transmit(&huart3, msgBytes, sizeof(msg), 0x00000000U);
 
 				state = RECEIVE_I;
 				break; 
@@ -385,7 +392,7 @@ int main(void)
 			case INITIATOR:
 				/* Initilizing Decawave module for initiator configuration */
 				HAL_NVIC_DisableIRQ (EXTI2_IRQn);
-				printf("Initiator state\n");
+				printf("INITIATOR state\n");
     
 				MX_DWM_Init (0);	
 			
@@ -407,6 +414,39 @@ int main(void)
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
+}
+
+/**
+  *
+  * @brief Convert double into two 8bit messages in order to send over UART
+  * @retval None
+  */
+uint8_t msbs(double dbl)
+{
+  uint16_t int16 = 0;
+  uint8_t msbs = 0;
+
+  //cast double to int16
+  int16 = (uint16_t) (dbl * 1000000);
+
+  // get most significant byte
+  msbs = (uint8_t) (int16 >> 8);
+
+  return msbs;
+}
+
+uint8_t lsbs(double dbl)
+{
+  uint16_t int16 = 0;
+  uint8_t lsbs = 0;
+
+  //cast double to int16
+  int16 = (uint16_t) (dbl * 1000000);
+
+  // get least significant byte
+  lsbs = (uint8_t) (int16 & 0xFF);
+
+  return lsbs;
 }
 
 /**
