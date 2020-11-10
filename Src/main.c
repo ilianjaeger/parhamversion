@@ -21,6 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "usb_device.h"
+#include "usart.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -90,7 +91,7 @@ typedef enum
 #define RX_BUF_LEN 24
 
 /* UWB microsecond (uus) to device time unit (dtu, around 15.65 ps) conversion factor.
- * 1 uus = 512 / 499.2 ï¿½s and 1 ï¿½s = 499.2 * 128 dtu. */
+ * 1 uus = 512 / 499.2 Ã¯Â¿Â½s and 1 Ã¯Â¿Â½s = 499.2 * 128 dtu. */
 #define UUS_TO_DWT_TIME 65536
 
 /* Delay between frames, in UWB microseconds. See NOTE 4 below. */
@@ -142,8 +143,6 @@ typedef enum
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
-
-USART_HandleTypeDef husart3;
 
 /* USER CODE BEGIN PV */
 
@@ -254,7 +253,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_USART_Init(void);
 
 /* USER CODE BEGIN PFP */
 
@@ -333,8 +331,8 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
-  MX_USART_Init();
-  /* USER CODE BEGIN 2 */
+  MX_USART3_UART_Init();
+    /* USER CODE BEGIN 2 */
 
 	HAL_Delay (3000);
 	printf("Starting the Great Application!!\n");
@@ -379,7 +377,7 @@ int main(void)
 				numRanged++;
 
         //send data over USART3
-        HAL_USART_Transmit(&husart3, (uint8_t*) &ranges[numRanged], 1U, 0x000000FFU);
+        HAL_USART_Transmit(&huart3, (uint8_t*) &ranges[numRanged], 1U, 0x000000FFU);
 
 				state = RECEIVE_I;
 				break; 
@@ -395,7 +393,7 @@ int main(void)
 
         // write something to the USART line for debug purposes
         printf("msg address:%x\n", (int) &msg);
-        HAL_USART_Transmit(&husart3, &msg, 1, 0x000000FFU);
+        HAL_UART_Transmit(&huart3, &msg, 1, 0x000000FFU);
 
 				
 				state = IDLE ;
@@ -620,56 +618,6 @@ static void MX_GPIO_Init(void)
 	
   HAL_NVIC_SetPriority(EXTI2_IRQn, 4, 0);
   //HAL_NVIC_EnableIRQ(EXTI2_IRQn);
-
-  /* Configure GPIO pin: USART3 TX Pin */
-  GPIO_InitStruct.Pin = USART3_TX_GPIO_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
-  HAL_GPIO_Init(USART3_TX_GPIO_Port, &GPIO_InitStruct);
-
-  /* Configure GPIO pin: USART3 RX Pin */
-  GPIO_InitStruct.Pin = USART3_RX_GPIO_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
-  HAL_GPIO_Init(USART3_RX_GPIO_Port, &GPIO_InitStruct);
-
-}
-/**
-  * @brief USART Initialization Function
-  * @param None
-  * @retval None
-  */
-// Pins: PB10 and PB11
-// GPIO alternate function mode: AF7
-// PB10 <=> USART3_TX
-// PB11 <=> USART3_RX
-static void MX_USART_Init(void)
-{
-  /* USART3 Clock Enable */
-  __HAL_RCC_USART3_CLK_ENABLE();
-
-  /* USART3 Register Typedef Configuration */
-  husart3.Instance = USART3;
-
-  /* UART Init Parameter Configuration */
-  husart3.Init.BaudRate = 115200;                             //TODO
-  husart3.Init.WordLength = USART_WORDLENGTH_8B;              //TODO
-  husart3.Init.StopBits = USART_STOPBITS_1;
-  husart3.Init.Parity = USART_PARITY_NONE;
-  husart3.Init.Mode = USART_MODE_TX;
-  husart3.Init.CLKPolarity = USART_POLARITY_LOW;              // Must be zero in asynchronous mode
-  husart3.Init.CLKPhase = USART_PHASE_1EDGE;                  // Must be zero in asynchronous mode
-  husart3.Init.CLKLastBit = USART_LASTBIT_DISABLE;
-
-  /* Initialize USART */
-  if (HAL_USART_Init(&husart3) != HAL_OK)
-  {
-    Error_Handler();
-  }
 }
 
 /* USER CODE BEGIN 4 */
