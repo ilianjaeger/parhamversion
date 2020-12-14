@@ -225,7 +225,7 @@ static uint64 final_tx_ts;
 /* Hold copies of computed time of flight and distance here for reference so that it can be examined at a debug breakpoint. */
 static double tof;
 static double distance;
-static uint8_t msg = 0xFF;
+static uint8_t message = 0xAA;
 
 	
 /* timing variables to determine the ranging period */
@@ -399,7 +399,7 @@ int main(void)
 				initiator_go(numMeasure);
 
         // write something to the USART line for debug purposes
-        HAL_UART_Transmit(&huart3, &msg, 1, 0x000000FFU);
+        HAL_UART_Transmit(&huart3, &message, 1, 0x000000FFU);
 
 				
 				state = IDLE ;
