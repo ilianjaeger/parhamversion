@@ -54,6 +54,25 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+/* Configuration enum */
+typedef enum
+{
+    LongData_Fast,
+    ShortData_Fast,
+    LongData_Range
+} configSel_t;
+
+/* FSM state enum */
+typedef enum
+{
+    IDLE,
+    RECEIVE_I,
+    WAIT,
+    PROCESS,
+    INITIATOR
+} tag_FSM_state_t;
+
+extern tag_FSM_state_t state;
 
 /* USER CODE END EFP */
 

@@ -41,23 +41,6 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-/* Configuration enum */
-typedef enum
-{
-    LongData_Fast,
-    ShortData_Fast,
-		LongData_Range
-} configSel_t;
-
-/* FSM state enum */
-typedef enum
-{
-    IDLE,
-    RECEIVE_I,
-    WAIT,
-    PROCESS,
-		INITIATOR
-} tag_FSM_state_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -233,7 +216,6 @@ uint64_t t1 = 0;
 uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
-
 tag_FSM_state_t state = IDLE;
 
 /* Variable to set and select the configuration mode */
@@ -337,7 +319,7 @@ int main(void)
     /* USER CODE BEGIN 2 */
 
 	HAL_Delay (3000);
-	printf("Starting the Great Application!!\n");
+	//printf("Starting the Great Application!!\n");
 	
   /* USER CODE END 2 */
 
@@ -352,7 +334,7 @@ int main(void)
 		switch (state)
 		{
 			case IDLE: 
-				printf ("IDLE state\n");
+				//printf ("IDLE state\n");
 				/* Initilizing Decawave module for responder configuration */
 				MX_DWM_Init(1);
 				HAL_NVIC_EnableIRQ(EXTI2_IRQn);
@@ -375,7 +357,7 @@ int main(void)
 			case PROCESS:
 				t2 = HAL_GetTick() - t1;
 				ranges[numRanged] = distance;
-				printf("Measurement: %d, Distance: %f, Time: %llu\n",numRanged,distance,t2);
+				//printf("Measurement: %d, Distance: %f, Time: %llu\n",numRanged,distance,t2);
 				numRanged++;
 
         //send data over USART3
@@ -392,7 +374,7 @@ int main(void)
 			case INITIATOR:
 				/* Initilizing Decawave module for initiator configuration */
 				HAL_NVIC_DisableIRQ (EXTI2_IRQn);
-				printf("INITIATOR state\n");
+				//printf("INITIATOR state\n");
     
 				MX_DWM_Init (0);	
 			
@@ -697,7 +679,7 @@ static void MX_DWM_Init(volatile bool responder)
 		HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 	}
 	else {
-		printf("initialize OK\n");
+		//printf("initialize OK\n");
 		HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
 		HAL_Delay(400);
 		HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
@@ -892,7 +874,7 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 				/* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 11 below. */
 				if (ret == DWT_ERROR)
 				{
-						printf("Sending Error\n");
+						//printf("Sending Error\n");
 				}
 				//printf("Response sent, waiting for final reception\n");
 
@@ -1044,9 +1026,9 @@ static void initiator_go (uint16_t numMeasure)
 						/* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 12 below. */
 						if (ret == DWT_SUCCESS)
 						{
-								printf ("Final msg sent correct # %d\n",numDone);
-                printf("%d\n", (int)final_tx_ts);
-                printf("%d\n", (int)final_tx_time);
+								//printf ("Final msg sent correct # %d\n",numDone);
+                //printf("%d\n", (int)final_tx_ts);
+                //printf("%d\n", (int)final_tx_time);
 								/* Poll DW1000 until TX frame sent event set. See NOTE 9 below. */
 								while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
 								{ };
@@ -1061,7 +1043,7 @@ static void initiator_go (uint16_t numMeasure)
 		}
 		else
 		{
-				printf ("Not receiving a frame and timeout. Cause:%lx\n",status_reg);
+				//printf ("Not receiving a frame and timeout. Cause:%lx\n",status_reg);
 				/* Clear RX error/timeout events in the DW1000 status register. */
 				dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
 
