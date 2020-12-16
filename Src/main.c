@@ -319,7 +319,7 @@ int main(void)
     /* USER CODE BEGIN 2 */
 
 	HAL_Delay (3000);
-	//printf("Starting the Great Application!!\n");
+	printf("Starting the Great Application!!\n");
 	
   /* USER CODE END 2 */
 
@@ -342,7 +342,7 @@ int main(void)
 				break;
 
 			case RECEIVE_I:
-				//printf("STATE RECEIVE_I\n");
+				printf("STATE RECEIVE_I\n");
 				HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 				 /* Clear reception timeout to start next ranging process. */
 				dwt_setrxtimeout(0);
@@ -357,7 +357,7 @@ int main(void)
 			case PROCESS:
 				t2 = HAL_GetTick() - t1;
 				ranges[numRanged] = distance;
-				//printf("Measurement: %d, Distance: %f, Time: %llu\n",numRanged,distance,t2);
+				printf("Measurement: %d, Distance: %f, Time: %llu\n",numRanged,distance,t2);
 				numRanged++;
 
         //send data over USART3
@@ -374,7 +374,7 @@ int main(void)
 			case INITIATOR:
 				/* Initilizing Decawave module for initiator configuration */
 				HAL_NVIC_DisableIRQ (EXTI2_IRQn);
-				//printf("INITIATOR state\n");
+				printf("INITIATOR state\n");
     
 				MX_DWM_Init (0);	
 			
@@ -679,7 +679,7 @@ static void MX_DWM_Init(volatile bool responder)
 		HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 	}
 	else {
-		//printf("initialize OK\n");
+		printf("initialize OK\n");
 		HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
 		HAL_Delay(400);
 		HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
