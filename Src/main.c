@@ -70,6 +70,7 @@
 #define FINAL_MSG_TS_LEN 4
 
 #define REPORT_MSG_DIST_IDX 10
+#define REPORT_MSG_LEN sizeof(double) // 8 bytes
 
 /* Buffer to store received response message.
  * Its size is adjusted to longest frame that this example code is supposed to handle. */
@@ -185,12 +186,12 @@ static dwt_config_t config_LongData_Fast = {
 static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0xAA, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0xAA, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
 
 	
 /* Frame sequence number, incremented after each transmission. */
@@ -213,7 +214,9 @@ static uint64 final_tx_ts;
 /* Hold copies of computed time of flight and distance here for reference so that it can be examined at a debug breakpoint. */
 static double tof;
 static double distance;
+static double reportedDistance;
 static uint8_t message = 0xAA;
+static double testMsg = 5.11145;
 
 	
 /* timing variables to determine the ranging period */
@@ -330,6 +333,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  //uint8_t* testMsgBytes = (uint8_t *) &testMsg;
   while (1)
   {
 		/* State machine of the application, application starts in IDLE mode and configs for responder,
@@ -362,7 +366,7 @@ int main(void)
 			case PROCESS:
 				t2 = HAL_GetTick() - t1;
 				ranges[numRanged] = distance;
-				//printf("Measurement: %d, Distance: %f, Time: %llu\n",numRanged,distance,t2);
+				printf("Measurement: %d, Distance: %f, Time: %llu\n",numRanged,distance,t2);
 				numRanged++;
 
         //send data over USART3
@@ -735,6 +739,60 @@ static void MX_DWM_Init(volatile bool responder)
 }
 
 /*! ------------------------------------------------------------------------------------------------------------------
+ * @fn doubleFromBytes()
+ *
+ * @brief Convert a double that is stored byte-wise in an int array back into a double.
+ *
+ * @param  int array which holds the double
+ *
+ * @return  double
+ */
+double doubleFromBytes(uint8_t *buffer)
+{
+    double result;
+    // legal and portable C provided buffer contains a valid double representation
+    memcpy(&result, buffer, sizeof(double));
+    return result;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn reportMsgWriteDist()
+ *
+ * @brief Write distance into report message to according offset
+ *
+ * @param  Double distance
+ *
+ * @return 
+ */
+void reportMsgWriteDist(double msgDouble)
+{
+  uint8_t* msgBytes = (uint8_t *) &msgDouble;
+  for(int i = 0; i < REPORT_MSG_LEN; i++)
+        {
+            tx_report_msg[i + REPORT_MSG_DIST_IDX] = msgBytes[i];
+        }
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn reportMsgReadDist()
+ *
+ * @brief Read distance from report message from according offset
+ *
+ * @param 
+ *
+ * @return Double distance
+ */
+double reportMsgReadDist(void)
+{
+  uint8_t msgBytes[REPORT_MSG_LEN];
+  for(int i = 0; i < REPORT_MSG_LEN; i++)
+        {
+            msgBytes[i] = rx_report_msg[i + REPORT_MSG_DIST_IDX];
+        }
+  return doubleFromBytes(msgBytes);
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
  * @fn get_tx_timestamp_u64()
  *
  * @brief Get the TX time-stamp in a 64-bit variable.
@@ -925,7 +983,8 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 				
         /* Write and send the report message.*/
         tx_report_msg[ALL_MSG_SN_IDX] = frame_seq_nb_responder;
-        // TODO: add distance to message
+        // add distance to message
+        reportMsgWriteDist(distance);
         dwt_writetxdata(sizeof(tx_report_msg), tx_report_msg, 0); /* Zero offset in TX buffer. */
         dwt_writetxfctrl(sizeof(tx_report_msg), 0, 0); /* Zero offset in TX buffer, no ranging. */
         ret = dwt_starttx(DWT_START_TX_IMMEDIATE); /* No response expected*/
@@ -968,6 +1027,8 @@ static void rx_err_cb(const dwt_cb_data_t *cb_data){
 	
 		state = RECEIVE_I;
 }
+
+
 
 /*! ---------------------------------------------------
  * @fn initiator_go()
@@ -1082,17 +1143,12 @@ static void initiator_go (uint16_t numMeasure)
                 frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
                 if (frame_len <= RX_BUF_LEN)
                 {
-                    dwt_readrxdata(rx_buffer, frame_len, 0);
+                  uint8_t rxDistBytes[REPORT_MSG_LEN];
+                  dwt_readrxdata(rxDistBytes, REPORT_MSG_LEN, REPORT_MSG_DIST_IDX);
+                  //reportedDistance = reportMsgReadDist();
+                  reportedDistance = doubleFromBytes(rxDistBytes);
                 }
-                /* Check that the frame is the expected response from the companion "DS TWR responder" example.
-                 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-                rx_buffer[ALL_MSG_SN_IDX] = 0;
 
-                // if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
-                if (memcmp(rx_buffer, rx_report_msg, 5) == 0)
-                {
-                  distance = (double)rx_buffer[13];
-                };
             }
 				}
 		}
