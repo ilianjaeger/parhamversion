@@ -54,7 +54,7 @@
 #define RANGE_BUF_SIZE 2000
 
 /* Number of Measurements to perform in each run */
-#define NUM_MEASUREMENTS 3
+#define NUM_MEASUREMENTS 1
 
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
 #define TX_ANT_DLY 16436
@@ -191,7 +191,7 @@ static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0
 static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0}; /* Actually not needed */
 
 	
 /* Frame sequence number, incremented after each transmission. */
@@ -214,10 +214,6 @@ static uint64 final_tx_ts;
 /* Hold copies of computed time of flight and distance here for reference so that it can be examined at a debug breakpoint. */
 static double tof;
 static double distance;
-static double reportedDistance;
-static uint8_t message = 0xAA;
-static double testMsg = 5.11145;
-
 	
 /* timing variables to determine the ranging period */
 uint64_t t1 = 0;
@@ -243,8 +239,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
-static uint8_t msbs(double dbl);
-static uint8_t lsbs(double dbl);
 
 /* USER CODE BEGIN PFP */
 
@@ -261,6 +255,11 @@ static void tx_conf_cb(const dwt_cb_data_t *);
 static void rx_ok_cb(const dwt_cb_data_t *);
 static void rx_to_cb(const dwt_cb_data_t *);
 static void rx_err_cb(const dwt_cb_data_t *);
+
+double doubleFromBytes(uint8_t *buffer);
+void reportMsgWriteDist(double msgDouble);
+double reportMsgReadDist(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -369,14 +368,6 @@ int main(void)
 				printf("Measurement: %d, Distance: %f, Time: %llu\n",numRanged,distance,t2);
 				numRanged++;
 
-        //send data over USART3
-        
-        //send data in bytes
-        uint16_t msg = (uint16_t) (distance * 1000);
-        uint8_t *msgBytes = (uint8_t *) &msg;
-        //transmit
-        HAL_UART_Transmit(&huart3, msgBytes, sizeof(msg), 0x00000000U);
-
 				state = RECEIVE_I;
 				break; 
 			
@@ -389,10 +380,10 @@ int main(void)
 			
 				initiator_go(numMeasure);
 
-        // write something to the USART line for debug purposes
-        HAL_UART_Transmit(&huart3, &message, 1, 0x000000FFU);
+        /* send received distance byte-wise over USART3 */
+        double testMsg = 5.11145;
+        HAL_UART_Transmit_IT(&huart3, (uint8_t *) &testMsg, REPORT_MSG_LEN);
 
-				
 				state = IDLE ;
 				break; 
 		}
@@ -405,39 +396,6 @@ int main(void)
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
-}
-
-/**
-  *
-  * @brief Convert double into two 8bit messages in order to send over UART
-  * @retval None
-  */
-uint8_t msbs(double dbl)
-{
-  uint16_t int16 = 0;
-  uint8_t msbs = 0;
-
-  //cast double to int16
-  int16 = (uint16_t) (dbl * 1000000);
-
-  // get most significant byte
-  msbs = (uint8_t) (int16 >> 8);
-
-  return msbs;
-}
-
-uint8_t lsbs(double dbl)
-{
-  uint16_t int16 = 0;
-  uint8_t lsbs = 0;
-
-  //cast double to int16
-  int16 = (uint16_t) (dbl * 1000000);
-
-  // get least significant byte
-  lsbs = (uint8_t) (int16 & 0xFF);
-
-  return lsbs;
 }
 
 /**
@@ -1106,7 +1064,7 @@ static void initiator_go (uint16_t numMeasure)
 						tx_final_msg[ALL_MSG_SN_IDX] = frame_seq_nb_initiator;
 						dwt_writetxdata(sizeof(tx_final_msg), tx_final_msg, 0); /* Zero offset in TX buffer. */
 						dwt_writetxfctrl(sizeof(tx_final_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
-						ret = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);
+						ret = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);  /* Expect report message containing calculated distance */
 
 						/* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 12 below. */
 						if (ret == DWT_SUCCESS)
@@ -1125,8 +1083,9 @@ static void initiator_go (uint16_t numMeasure)
 								frame_seq_nb_initiator++;
 						}
 
-            // Receive distance measurement**************************************************
-            /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 9 below. */
+            /*************** Receive report message ******************************************************/
+
+              /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 9 below. */
             while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
             { };
                         
@@ -1141,12 +1100,11 @@ static void initiator_go (uint16_t numMeasure)
 
                 /* A frame has been received, read it into the local buffer. */
                 frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
-                if (frame_len <= RX_BUF_LEN)
+                if (frame_len <= RX_BUF_LEN && (REPORT_MSG_DIST_IDX + REPORT_MSG_LEN) <= frame_len)
                 {
-                  uint8_t rxDistBytes[REPORT_MSG_LEN];
-                  dwt_readrxdata(rxDistBytes, REPORT_MSG_LEN, REPORT_MSG_DIST_IDX);
-                  //reportedDistance = reportMsgReadDist();
-                  reportedDistance = doubleFromBytes(rxDistBytes);
+                  uint8_t rxDistBytes[REPORT_MSG_LEN];    // allocate bytes for distance measurement
+                  dwt_readrxdata(rxDistBytes, REPORT_MSG_LEN, REPORT_MSG_DIST_IDX);  // read distance from given offset
+                  distance = doubleFromBytes(rxDistBytes);  // convert back to double
                 }
 
             }
