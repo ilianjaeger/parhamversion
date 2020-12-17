@@ -381,8 +381,7 @@ int main(void)
 				initiator_go(numMeasure);
 
         /* send received distance byte-wise over USART3 */
-        double testMsg = 5.11145;
-        HAL_UART_Transmit_IT(&huart3, (uint8_t *) &testMsg, REPORT_MSG_LEN);
+        HAL_UART_Transmit_IT(&huart3, (uint8_t *) &distance, REPORT_MSG_LEN);
 
 				state = IDLE ;
 				break; 
