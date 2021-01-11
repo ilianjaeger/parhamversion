@@ -283,7 +283,7 @@ PUTCHAR_PROTOTYPE
 {
   /* Place your implementation of fputc here */
   /* e.g. write a character to the serial port and Loop until the end of transmission */
-  while (USBD_OK != CDC_Transmit_FS((uint8_t *) &ch, 1))
+  while ((USBD_OK != CDC_Transmit_FS((uint8_t *) &ch, 1)) & (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED))
   {
     ;
   }
