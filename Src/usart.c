@@ -26,8 +26,13 @@
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart3;
-uint8_t rxBuffer;
+uint8_t msgIdBuffer;
+uint8_t logMsgBuffer;
+logState_e logState = LOG_IDLE;
 char initSequence = '#';
+char logSequence = '?';
+
+
 
 
 /* USART3 init function */
@@ -49,7 +54,7 @@ void MX_USART3_UART_Init(void)
     {
       Error_Handler ();
     }
-  HAL_UART_Receive_IT (&huart3, &rxBuffer, sizeof(rxBuffer));
+  HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
 }
 
 void HAL_UART_MspInit (UART_HandleTypeDef *uartHandle)
@@ -115,20 +120,45 @@ void USART3_IRQHandler (void)
   /* USER CODE BEGIN UART4_IRQn 0 */
 
   /* USER CODE END UART4_IRQn 0 */
+
+  if(logState == LOG_IDLE)
+  {
+    // distinguish between ranging or logging request
+    if ((char)msgIdBuffer == initSequence)
+      {
+        // initiate ranging procedure
+        state = INITIATOR;
+      }
+    else if ((char)msgIdBuffer == logSequence)
+    {
+      logState = LOG_START;
+    }
+  }
+  
   // Handle Interrupt
   HAL_UART_IRQHandler (&huart3);
-
-  // Handle Ranging request
-  if ((char)rxBuffer == initSequence)
-    {
-      state = INITIATOR;
-    }
-
-  HAL_UART_Receive_IT (&huart3, &rxBuffer, sizeof(rxBuffer));
-
   /* USER CODE BEGIN UART4_IRQn 1 */
 
   /* USER CODE END UART4_IRQn 1 */
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if(huart->Instance == USART3)
+  {
+    if(logState == LOG_START) // '?' received
+    {
+      // enable USART interrupt for 24 bytes (log message)
+      HAL_UART_Receive_IT(&huart3, &logMsgBuffer, sizeof(logMsgBuffer));
+      logState = LOG_RUNNING;
+    }
+    else // '#' or logMsg received
+    {
+      // enable USART interrupt for 1 byte (message ID)
+      HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
+      logState = LOG_IDLE;
+    }
+  }
 }
 
 /* USER CODE BEGIN 1 */
