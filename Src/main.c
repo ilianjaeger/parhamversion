@@ -326,7 +326,7 @@ int main(void)
     /* USER CODE BEGIN 2 */
 
 	HAL_Delay (3000);
-	//printf("Starting the Great Application!!\n");
+	printf("Starting the Great Application!!\n");
 	
   /* USER CODE END 2 */
 

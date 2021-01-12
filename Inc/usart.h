@@ -36,11 +36,7 @@ extern UART_HandleTypeDef huart3;
 extern uint8_t logMsgBuffer;
 
 /* USER CODE BEGIN Private defines */
-typedef enum {
-  LOG_IDLE,
-  LOG_START,
-  LOG_RUNNING,
-}logState_e;
+
 /* USER CODE END Private defines */
 
 void MX_USART3_UART_Init(void);
