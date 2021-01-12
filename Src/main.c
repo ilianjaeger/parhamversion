@@ -63,7 +63,6 @@
 /* Length of the common part of the message (up to and including the function code, see NOTE 3 below). */
 #define ALL_MSG_COMMON_LEN 10
 /* Indexes to access some of the fields in the frames defined above. */
-#define ALL_MSG_SN_IDX 2
 #define FINAL_MSG_POLL_TX_TS_IDX 10
 #define FINAL_MSG_RESP_RX_TS_IDX 14
 #define FINAL_MSG_FINAL_TX_TS_IDX 18
@@ -192,7 +191,6 @@ static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x2
 static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0}; /* Actually not needed */
-
 	
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb_initiator = 0;
@@ -959,6 +957,13 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 
 				state = PROCESS;
 		}
+    else if(memcmp(rx_buffer, rx_log_msg, ALL_MSG_COMMON_LEN) == 0)
+    {
+      /* get values embedded in the message */
+
+      /* print values */
+      printf("log message received.\n");
+    }
 }
  
 // @brief Callback to process RX timeout events

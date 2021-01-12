@@ -20,6 +20,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "usart.h"
+#include "deca_device_api.h"
+#include "deca_regs.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -27,7 +29,7 @@
 
 UART_HandleTypeDef huart3;
 uint8_t msgIdBuffer;
-uint8_t logMsgBuffer;
+uint8_t logMsgBuffer[sizeof(rx_log_msg)];
 char initSequence = '#';
 char logSequence = '?';
 
@@ -141,10 +143,32 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     else if((char)msgIdBuffer == logSequence) // '?' received
     {
       msgIdBuffer = '0';  //reset messageID buffer
-      HAL_UART_Receive_IT(&huart3, &logMsgBuffer, sizeof(logMsgBuffer));  // expect log message
+      HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));  // expect log message
     }
-    else  // logMessace received
+    else  // logMessage received
     {
+      int ret;
+      /* Write and send log message. See NOTE 8 below. */
+      tx_log_msg[ALL_MSG_SN_IDX] = frame_seq_nb_log;
+      dwt_writetxdata(sizeof(tx_log_msg), tx_log_msg, 0); /* Zero offset in TX buffer. */
+      dwt_writetxfctrl(sizeof(tx_log_msg), 0, 0); /* Zero offset in TX buffer, not ranging. */
+      ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
+
+      /* If dwt_starttx() returns an error, abandon this log transmission. */
+      if (ret == DWT_SUCCESS)
+            {
+          /* Poll DW1000 until TX frame sent event set. See NOTE 9 below. */
+          while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
+          { };
+
+          /* Clear TXFRS event. */
+          dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+
+          /* Increment frame sequence number after transmission of the log message (modulo 256). */
+          frame_seq_nb_log++;
+      }
+      /* log message tx end */
+
       HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer)); // expect new message ID
     }
   }

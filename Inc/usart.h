@@ -33,7 +33,6 @@
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart3;
-extern uint8_t logMsgBuffer;
 
 /* USER CODE BEGIN Private defines */
 
