@@ -20,8 +20,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "usart.h"
-#include "deca_device_api.h"
-#include "deca_regs.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -29,7 +27,7 @@
 
 UART_HandleTypeDef huart3;
 uint8_t msgIdBuffer;
-uint8_t logMsgBuffer[sizeof(rx_log_msg)];
+uint8_t logMsgBuffer[LOG_MSG_SIZE];
 char initSequence = '#';
 char logSequence = '?';
 
@@ -133,46 +131,48 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    if ((char)msgIdBuffer == initSequence) // '#' received
+    /* ranging request received */
+    if ((char)msgIdBuffer == initSequence)
     {
-      state = INITIATOR;  // initiate ranging
-      msgIdBuffer = '0';  // reset messageID buffer
-      HAL_UART_Receive_IT(&huart3, &msgIdBuffer, sizeof(msgIdBuffer));  // expect new message ID
+      /* initiate ranging */
+      state = INITIATOR;
+
+      /* reset messageID buffer */
+      msgIdBuffer = '0';
+
+      /* prepare for reception of message ID */
+      HAL_UART_Receive_IT(&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
 
     }
-    else if((char)msgIdBuffer == logSequence) // '?' received
+    /* logging request received */
+    else if((char)msgIdBuffer == logSequence)
     {
       msgIdBuffer = '0';  //reset messageID buffer
-      HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));  // expect log message
+
+      /* prepare for reception of log message */
+      HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
     }
-    else  // logMessage received
+    /* log message received */
+    else
     {
-      int ret;
-      /* Write and send log message. See NOTE 8 below. */
-      tx_log_msg[ALL_MSG_SN_IDX] = frame_seq_nb_log;
-      dwt_writetxdata(sizeof(tx_log_msg), tx_log_msg, 0); /* Zero offset in TX buffer. */
-      dwt_writetxfctrl(sizeof(tx_log_msg), 0, 0); /* Zero offset in TX buffer, not ranging. */
-      ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
+      /* forward log message to uwb node */
+      send_log_msg();
 
-      /* If dwt_starttx() returns an error, abandon this log transmission. */
-      if (ret == DWT_SUCCESS)
-            {
-          /* Poll DW1000 until TX frame sent event set. See NOTE 9 below. */
-          while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
-          { };
-
-          /* Clear TXFRS event. */
-          dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
-
-          /* Increment frame sequence number after transmission of the log message (modulo 256). */
-          frame_seq_nb_log++;
-      }
-      /* log message tx end */
-
-      HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer)); // expect new message ID
+      /* prepare for reception of message ID */
+      HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
     }
   }
 }
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  if(huart->Instance == USART3)
+  {
+    /* prepare for reception of message ID */
+    HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
+  }
+}
+
 
 /* USER CODE BEGIN 1 */
 

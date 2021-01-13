@@ -42,20 +42,16 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-uint8_t frame_seq_nb_log = 0;
-uint8_t tx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t rx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-#define ALL_MSG_SN_IDX 2
-
+#define LOG_MSG_SIZE 24
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
+void send_log_msg(void);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */

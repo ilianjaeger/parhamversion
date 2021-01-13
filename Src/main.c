@@ -63,6 +63,7 @@
 /* Length of the common part of the message (up to and including the function code, see NOTE 3 below). */
 #define ALL_MSG_COMMON_LEN 10
 /* Indexes to access some of the fields in the frames defined above. */
+#define ALL_MSG_SN_IDX 2
 #define FINAL_MSG_POLL_TX_TS_IDX 10
 #define FINAL_MSG_RESP_RX_TS_IDX 14
 #define FINAL_MSG_FINAL_TX_TS_IDX 18
@@ -186,15 +187,19 @@ static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x2
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 tx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0}; /* Actually not needed */
-	
+static uint8 rx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb_initiator = 0;
 static uint8 frame_seq_nb_responder = 0;
+static uint8 frame_seq_nb_log = 0;
+
 	
 static uint8 rx_buffer[RX_BUF_LEN];
 
@@ -1131,6 +1136,34 @@ static void initiator_go (uint16_t numMeasure)
 	}
 }
 
+/* @fn      send_log_msg
+ * @brief   send log message received over USART
+ *          
+ * */
+void send_log_msg(void)
+{
+  int ret;
+  /* Write and send log message. See NOTE 8 below. */
+  tx_log_msg[ALL_MSG_SN_IDX] = frame_seq_nb_log;
+  dwt_writetxdata(sizeof(tx_log_msg), tx_log_msg, 0); /* Zero offset in TX buffer. */
+  dwt_writetxfctrl(sizeof(tx_log_msg), 0, 0); /* Zero offset in TX buffer, not ranging. */
+  ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
+
+  /* If dwt_starttx() returns an error, abandon this log transmission. */
+  if (ret == DWT_SUCCESS)
+  {
+    /* Poll DW1000 until TX frame sent event set. See NOTE 9 below. */
+    while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
+    { };
+
+    /* Clear TXFRS event. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+
+    /* Increment frame sequence number after transmission of the log message (modulo 256). */
+    frame_seq_nb_log++;
+  }
+}
+
 /* @fn      HAL_GPIO_EXTI_Callback
  * @brief   IRQ HAL call-back for all EXTI configured lines
  *          i.e. DW_RESET_Pin, DW_IRQn_Pin and Button_Pin
@@ -1151,7 +1184,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				state = INITIATOR;
     }
 }
-
 
 /* USER CODE END 4 */
 
