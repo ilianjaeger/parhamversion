@@ -62,6 +62,7 @@
 
 /* Length of the common part of the message (up to and including the function code, see NOTE 3 below). */
 #define ALL_MSG_COMMON_LEN 10
+#define LOG_MSG_COMMON_LEN 3
 /* Indexes to access some of the fields in the frames defined above. */
 #define ALL_MSG_SN_IDX 2
 #define FINAL_MSG_POLL_TX_TS_IDX 10
@@ -261,6 +262,7 @@ static void rx_err_cb(const dwt_cb_data_t *);
 
 static double doubleFromBytes(uint8_t *buffer);
 static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset);
+static uint32_t timeMsFromBytes(uint8_t *buffer, uint8_t offset);
 static float coordinateFromBytes(uint8_t *buffer, uint8_t offset);
 static void reportMsgWriteDist(double msgDouble);
 static double reportMsgReadDist(void);
@@ -948,7 +950,7 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 
 				state = PROCESS;
 		}
-    else if(memcmp(rx_buffer, rx_log_msg, ALL_MSG_COMMON_LEN) == 0)
+    else if(memcmp(rx_buffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
     {
       /* get values embedded in the message */
 
@@ -960,9 +962,10 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
       }
       printf("\n");
       //uint64_t timeUs = timeUsFromBytes(rx_buffer, 14);
+      uint32_t timeMs = timeMsFromBytes(rx_buffer, 6);
       float x = coordinateFromBytes(rx_buffer, 10);
       float y = coordinateFromBytes(rx_buffer, 14);
-      printf("x: %f, y: %f \n", x, y);
+      printf("time: %li, x: %f, y: %f \n", (long int) timeMs, x, y);
       state = RECEIVE_I;
     }
     else
@@ -1225,6 +1228,13 @@ static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset)
   uint64_t timeUs;
   memcpy(&timeUs, buffer + offset, sizeof(uint64_t));
   return timeUs;
+}
+
+static uint32_t timeMsFromBytes(uint8_t *buffer, uint8_t offset)
+{
+  uint32_t timeMs;
+  memcpy(&timeMs, buffer + offset, sizeof(uint32_t));
+  return timeMs;
 }
 
 static float coordinateFromBytes(uint8_t *buffer, uint8_t offset)
