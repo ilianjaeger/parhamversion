@@ -259,9 +259,11 @@ static void rx_ok_cb(const dwt_cb_data_t *);
 static void rx_to_cb(const dwt_cb_data_t *);
 static void rx_err_cb(const dwt_cb_data_t *);
 
-double doubleFromBytes(uint8_t *buffer);
-void reportMsgWriteDist(double msgDouble);
-double reportMsgReadDist(void);
+static double doubleFromBytes(uint8_t *buffer);
+static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset);
+static float coordinateFromBytes(uint8_t *buffer, uint8_t offset);
+static void reportMsgWriteDist(double msgDouble);
+static double reportMsgReadDist(void);
 
 /* USER CODE END PFP */
 
@@ -698,22 +700,6 @@ static void MX_DWM_Init(volatile bool responder)
   dwt_configuretxrf(&configTX);
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn doubleFromBytes()
- *
- * @brief Convert a double that is stored byte-wise in an int array back into a double.
- *
- * @param  int array which holds the double
- *
- * @return  double
- */
-double doubleFromBytes(uint8_t *buffer)
-{
-    double result;
-    // legal and portable C provided buffer contains a valid double representation
-    memcpy(&result, buffer, sizeof(double));
-    return result;
-}
 
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn reportMsgWriteDist()
@@ -724,7 +710,7 @@ double doubleFromBytes(uint8_t *buffer)
  *
  * @return 
  */
-void reportMsgWriteDist(double msgDouble)
+static void reportMsgWriteDist(double msgDouble)
 {
   uint8_t* msgBytes = (uint8_t *) &msgDouble;
   for(int i = 0; i < REPORT_MSG_LEN; i++)
@@ -742,7 +728,7 @@ void reportMsgWriteDist(double msgDouble)
  *
  * @return Double distance
  */
-double reportMsgReadDist(void)
+static double reportMsgReadDist(void)
 {
   uint8_t msgBytes[REPORT_MSG_LEN];
   for(int i = 0; i < REPORT_MSG_LEN; i++)
@@ -973,6 +959,10 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
         printf("%c,", (char)rx_buffer[i]);
       }
       printf("\n");
+      //uint64_t timeUs = timeUsFromBytes(rx_buffer, 14);
+      float x = coordinateFromBytes(rx_buffer, 10);
+      float y = coordinateFromBytes(rx_buffer, 14);
+      printf("x: %f, y: %f \n", x, y);
       state = RECEIVE_I;
     }
     else
@@ -1207,6 +1197,41 @@ void Error_Handler(void)
   /* User can add his own implementation to report the HAL error return state */
 
   /* USER CODE END Error_Handler_Debug */
+}
+
+/*******************************************************************************
+                  helper functions
+********************************************************************************/
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn doubleFromBytes()
+ *
+ * @brief Convert a double that is stored byte-wise in an int array back into a double.
+ *
+ * @param  int array which holds the double
+ *
+ * @return  double
+ */
+static double doubleFromBytes(uint8_t *buffer)
+{
+    double result;
+    // legal and portable C provided buffer contains a valid double representation
+    memcpy(&result, buffer, sizeof(double));
+    return result;
+}
+
+static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset)
+{
+  uint64_t timeUs;
+  memcpy(&timeUs, buffer + offset, sizeof(uint64_t));
+  return timeUs;
+}
+
+static float coordinateFromBytes(uint8_t *buffer, uint8_t offset)
+{
+  float coordinate;
+  memcpy(&coordinate, buffer + offset, sizeof(float));
+  return coordinate;
 }
 
 #ifdef  USE_FULL_ASSERT
