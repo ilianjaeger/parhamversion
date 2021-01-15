@@ -147,7 +147,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     /* logging request received */
     else if((char)msgIdBuffer == logSequence)
     {
-      msgIdBuffer = '0';  //reset messageID buffer
+      /* reset messageID buffer */
+      msgIdBuffer = '0';
 
       /* prepare for reception of log message */
       HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
@@ -156,7 +157,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     else
     {
       /* forward log message to uwb node */
-      send_log_msg();
+      send_log_msg(logMsgBuffer);
 
       /* prepare for reception of message ID */
       HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));

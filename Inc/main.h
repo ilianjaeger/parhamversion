@@ -51,7 +51,7 @@ extern "C" {
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-void send_log_msg(void);
+void send_log_msg(uint8_t logMsgBuffer[LOG_MSG_SIZE]);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */

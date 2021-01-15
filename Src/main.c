@@ -187,7 +187,7 @@ static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x2
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 tx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 tx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
@@ -968,6 +968,16 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 
       /* print values */
       printf("log message received.\n");
+      for(int i=0; i<sizeof(rx_buffer);i++)
+      {
+        printf("%c,", (char)rx_buffer[i]);
+      }
+      printf("\n");
+      state = RECEIVE_I;
+    }
+    else
+    {
+      state = RECEIVE_I;
     }
 }
  
@@ -1140,13 +1150,13 @@ static void initiator_go (uint16_t numMeasure)
  * @brief   send log message received over USART
  *          
  * */
-void send_log_msg(void)
+void send_log_msg(uint8_t logMsgBuffer[LOG_MSG_SIZE])
 {
   int ret;
-  /* Write and send log message. See NOTE 8 below. */
-  tx_log_msg[ALL_MSG_SN_IDX] = frame_seq_nb_log;
-  dwt_writetxdata(sizeof(tx_log_msg), tx_log_msg, 0); /* Zero offset in TX buffer. */
-  dwt_writetxfctrl(sizeof(tx_log_msg), 0, 0); /* Zero offset in TX buffer, not ranging. */
+  /* Send log message. See NOTE 8 below. */
+  //tx_log_msg[ALL_MSG_SN_IDX] = frame_seq_nb_log;
+  dwt_writetxdata(LOG_MSG_SIZE, logMsgBuffer, 0); /* Zero offset in TX buffer. */
+  dwt_writetxfctrl(LOG_MSG_SIZE, 0, 0); /* Zero offset in TX buffer, not ranging. */
   ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
 
   /* If dwt_starttx() returns an error, abandon this log transmission. */
@@ -1160,7 +1170,7 @@ void send_log_msg(void)
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
 
     /* Increment frame sequence number after transmission of the log message (modulo 256). */
-    frame_seq_nb_log++;
+    //frame_seq_nb_log++;
   }
 }
 
