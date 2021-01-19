@@ -30,6 +30,7 @@ uint8_t msgIdBuffer;
 uint8_t logMsgBuffer[LOG_MSG_SIZE];
 char initSequence = '#';
 char logSequence = '?';
+uint8_t logMsgSequence[2] = {0x41, 0x88};
 
 
 
@@ -154,13 +155,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
     }
     /* log message received */
-    else
+    else if(memcmp(logMsgBuffer, logMsgSequence, 2) == 0)
     {
       /* forward log message to uwb node */
       send_log_msg(logMsgBuffer);
 
       /* prepare for reception of message ID */
       HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
+    }
+    /* nonsense received */
+    else
+    {
+      HAL_UART_Receive_IT(&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
     }
   }
 }

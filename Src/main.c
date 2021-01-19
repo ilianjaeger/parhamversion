@@ -73,6 +73,8 @@
 #define REPORT_MSG_DIST_IDX 10
 #define REPORT_MSG_LEN sizeof(double) // 8 bytes
 
+#define LOG_MSG_IDENTIFIER_IDX 3
+
 /* Buffer to store received response message.
  * Its size is adjusted to longest frame that this example code is supposed to handle. */
 #define RX_BUF_LEN 24
@@ -260,10 +262,11 @@ static void rx_ok_cb(const dwt_cb_data_t *);
 static void rx_to_cb(const dwt_cb_data_t *);
 static void rx_err_cb(const dwt_cb_data_t *);
 
-static double doubleFromBytes(uint8_t *buffer);
+static double doubleFromBytes(uint8_t *buffer, uint8_t offset);
 static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset);
 static uint32_t timeMsFromBytes(uint8_t *buffer, uint8_t offset);
 static float coordinateFromBytes(uint8_t *buffer, uint8_t offset);
+static char charFromBytes(uint8_t *buffer, uint8_t offset);
 static void reportMsgWriteDist(double msgDouble);
 static double reportMsgReadDist(void);
 
@@ -737,7 +740,7 @@ static double reportMsgReadDist(void)
         {
             msgBytes[i] = rx_report_msg[i + REPORT_MSG_DIST_IDX];
         }
-  return doubleFromBytes(msgBytes);
+  return doubleFromBytes(msgBytes, 0);
 }
 
 /*! ------------------------------------------------------------------------------------------------------------------
@@ -953,23 +956,39 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
     else if(memcmp(rx_buffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
     {
       /* get values embedded in the message */
-
-      /* print values */
-      printf("log message received.\n");
-      for(int i=0; i<sizeof(rx_buffer);i++)
+      char logMsgSequence = charFromBytes(rx_buffer, LOG_MSG_IDENTIFIER_IDX);
+      if(logMsgSequence == 'p')
       {
-        printf("%c,", (char)rx_buffer[i]);
+        /* print values */
+        // printf("log message received.\n");
+        // for(int i=0; i<sizeof(rx_buffer);i++)
+        // {
+        //   printf("%c,", (char)rx_buffer[i]);
+        // }
+        // printf("\n");
+        //uint64_t timeUs = timeUsFromBytes(rx_buffer, 14);
+
+        /* positon logging */
+        uint32_t timeMs = timeMsFromBytes(rx_buffer, 4);
+        float x = coordinateFromBytes(rx_buffer, 8);
+        float y = coordinateFromBytes(rx_buffer, 12);
+        printf("time: %li, x: %f, y: %f \n", (long int) timeMs, x, y);
       }
-      printf("\n");
-      //uint64_t timeUs = timeUsFromBytes(rx_buffer, 14);
-      uint32_t timeMs = timeMsFromBytes(rx_buffer, 6);
-      float x = coordinateFromBytes(rx_buffer, 10);
-      float y = coordinateFromBytes(rx_buffer, 14);
-      printf("time: %li, x: %f, y: %f \n", (long int) timeMs, x, y);
+      else if(logMsgSequence == 'm')
+      {
+        /* measurements logging */
+        float x = coordinateFromBytes(rx_buffer, 4);
+        float y = coordinateFromBytes(rx_buffer, 8);
+        double r = doubleFromBytes(rx_buffer,12);
+        printf("x: %f, y: %f, r: %lf\n", x, y, r);
+      }
+
+      /* enable UWB reception */
       state = RECEIVE_I;
     }
     else
     {
+      printf("Nothing received...\n");
       state = RECEIVE_I;
     }
 }
@@ -1116,7 +1135,7 @@ static void initiator_go (uint16_t numMeasure)
                 {
                   uint8_t rxDistBytes[REPORT_MSG_LEN];    // allocate bytes for distance measurement
                   dwt_readrxdata(rxDistBytes, REPORT_MSG_LEN, REPORT_MSG_DIST_IDX);  // read distance from given offset
-                  distance = doubleFromBytes(rxDistBytes);  // convert back to double
+                  distance = doubleFromBytes(rxDistBytes,0);  // convert back to double
                 }
 
             }
@@ -1212,14 +1231,15 @@ void Error_Handler(void)
  * @brief Convert a double that is stored byte-wise in an int array back into a double.
  *
  * @param  int array which holds the double
+ * @param  uint8_t offset which points to head index of double in buffer
  *
  * @return  double
  */
-static double doubleFromBytes(uint8_t *buffer)
+static double doubleFromBytes(uint8_t *buffer, uint8_t offset)
 {
     double result;
     // legal and portable C provided buffer contains a valid double representation
-    memcpy(&result, buffer, sizeof(double));
+    memcpy(&result, buffer + offset, sizeof(double));
     return result;
 }
 
@@ -1242,6 +1262,13 @@ static float coordinateFromBytes(uint8_t *buffer, uint8_t offset)
   float coordinate;
   memcpy(&coordinate, buffer + offset, sizeof(float));
   return coordinate;
+}
+
+static char charFromBytes(uint8_t *buffer, uint8_t offset)
+{
+  char c;
+  memcpy(&c, buffer + offset, sizeof(char));
+  return c;
 }
 
 #ifdef  USE_FULL_ASSERT
