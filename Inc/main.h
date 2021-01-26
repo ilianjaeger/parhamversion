@@ -70,7 +70,9 @@ typedef enum
     RECEIVE_I,
     WAIT,
     PROCESS,
-    INITIATOR
+    INITIATOR,
+    SEND_LOG,
+    PRINT_LOG
 } tag_FSM_state_t;
 
 extern tag_FSM_state_t state;

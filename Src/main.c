@@ -62,7 +62,7 @@
 
 /* Length of the common part of the message (up to and including the function code, see NOTE 3 below). */
 #define ALL_MSG_COMMON_LEN 10
-#define LOG_MSG_COMMON_LEN 3
+#define LOG_MSG_COMMON_LEN 4
 /* Indexes to access some of the fields in the frames defined above. */
 #define ALL_MSG_SN_IDX 2
 #define FINAL_MSG_POLL_TX_TS_IDX 10
@@ -189,14 +189,15 @@ static dwt_config_t config_LongData_Fast = {
 static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 tx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCC, 0xDD, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
+//static uint8 tx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 tx_log_msg[24];
 
 static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0}; /* Actually not needed */
-static uint8 rx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 rx_log_msg[] = {0x41, 0x88, 0, 0xCC, 0xDD, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb_initiator = 0;
@@ -343,6 +344,8 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   //uint8_t* testMsgBytes = (uint8_t *) &testMsg;
+
+  MX_DWM_Init(1);
   while (1)
   {
 		/* State machine of the application, application starts in IDLE mode and configs for responder,
@@ -354,14 +357,14 @@ int main(void)
 			case IDLE: 
 				//printf ("IDLE state\n");
 				/* Initilizing Decawave module for responder configuration */
-				MX_DWM_Init(1);
+				// MX_DWM_Init(1);
 				HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 				state = RECEIVE_I;
 				break;
 
 			case RECEIVE_I:
 				//printf("STATE RECEIVE_I\n");
-				HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
+				// HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 				 /* Clear reception timeout to start next ranging process. */
 				dwt_setrxtimeout(0);
 				/* Activate reception immediately. */
@@ -395,6 +398,58 @@ int main(void)
 
 				state = IDLE ;
 				break; 
+
+      case SEND_LOG:
+        if(log_available)
+        {
+          // dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0); /* Zero offset in TX buffer. */
+          // dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
+
+          // dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+
+          // while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
+          // { };
+
+
+          int ret;
+          /* Send log message. See NOTE 8 below. */
+          //tx_log_msg[ALL_MSG_SN_IDX] = frame_seq_nb_log;
+          dwt_writetxdata(sizeof(logMsgBuffer), logMsgBuffer, 0); /* Zero offset in TX buffer. */
+          dwt_writetxfctrl(sizeof(logMsgBuffer), 0, 1); /* Zero offset in TX buffer, not ranging. */
+          ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
+
+          /* If dwt_starttx() returns an error, abandon this log transmission. */
+          if (ret == DWT_SUCCESS)
+          {
+            /* Poll DW1000 until TX frame sent event set. See NOTE 9 below. */
+            while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
+            { };
+
+            /* Clear TXFRS event. */
+            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+
+            /* Increment frame sequence number after transmission of the log message (modulo 256). */
+            //frame_seq_nb_log++;
+          }
+
+          log_available = 0;
+        }
+
+        break;
+
+        case PRINT_LOG: ;
+          uint8_t t1;
+          t1 = (uint8_t) HAL_GetTick();
+          for(int i=0; i<sizeof(rx_buffer);i++)
+          {
+            printf("%d, ", rx_buffer[i]);
+          }
+          uint8_t delta = (uint8_t) (HAL_GetTick()) - t1;
+          printf("time %d, ", delta);
+          printf("\n");
+          
+          state = RECEIVE_I;
+          break;
 		}
 
 
@@ -956,35 +1011,32 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
     else if(memcmp(rx_buffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
     {
       /* get values embedded in the message */
-      char logMsgSequence = charFromBytes(rx_buffer, LOG_MSG_IDENTIFIER_IDX);
-      if(logMsgSequence == 'p')
-      {
-        /* print values */
-        // printf("log message received.\n");
-        // for(int i=0; i<sizeof(rx_buffer);i++)
-        // {
-        //   printf("%c,", (char)rx_buffer[i]);
-        // }
-        // printf("\n");
-        //uint64_t timeUs = timeUsFromBytes(rx_buffer, 14);
+      //char logMsgSequence = charFromBytes(rx_buffer, LOG_MSG_IDENTIFIER_IDX);
 
-        /* positon logging */
-        uint32_t timeMs = timeMsFromBytes(rx_buffer, 4);
-        float x = coordinateFromBytes(rx_buffer, 8);
-        float y = coordinateFromBytes(rx_buffer, 12);
-        printf("time: %li, x: %f, y: %f \n", (long int) timeMs, x, y);
-      }
-      else if(logMsgSequence == 'm')
-      {
-        /* measurements logging */
-        float x = coordinateFromBytes(rx_buffer, 4);
-        float y = coordinateFromBytes(rx_buffer, 8);
-        double r = doubleFromBytes(rx_buffer,12);
-        printf("x: %f, y: %f, r: %lf\n", x, y, r);
-      }
+      /* print values */
+        //printf("log message received.\n");
+
+
+      // if(logMsgSequence == 'p')
+      // {
+        
+      //   /* positon logging */
+      //   uint32_t timeMs = timeMsFromBytes(rx_buffer, 4);
+      //   float x = coordinateFromBytes(rx_buffer, 8);
+      //   float y = coordinateFromBytes(rx_buffer, 12);
+      //   printf("time: %li, x: %f, y: %f \n", (long int) timeMs, x, y);
+      // }
+      // else if(logMsgSequence == 'm')
+      // {
+      //   /* measurements logging */
+      //   float x = coordinateFromBytes(rx_buffer, 4);
+      //   float y = coordinateFromBytes(rx_buffer, 8);
+      //   double r = doubleFromBytes(rx_buffer,12);
+      //   printf("x: %f, y: %f, r: %lf\n", x, y, r);
+      // }
 
       /* enable UWB reception */
-      state = RECEIVE_I;
+      state = PRINT_LOG;
     }
     else
     {

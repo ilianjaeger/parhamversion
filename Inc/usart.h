@@ -39,6 +39,8 @@ extern UART_HandleTypeDef huart3;
 /* USER CODE END Private defines */
 
 void MX_USART3_UART_Init(void);
+extern uint8_t logMsgBuffer[LOG_MSG_SIZE];
+extern uint8_t log_available;
 
 /* USER CODE BEGIN Prototypes */
 

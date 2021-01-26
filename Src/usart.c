@@ -21,6 +21,7 @@
 #include "main.h"
 #include "usart.h"
 #include "string.h"
+#include <stdio.h>
 
 /* USER CODE BEGIN 0 */
 
@@ -32,6 +33,7 @@ uint8_t logMsgBuffer[LOG_MSG_SIZE];
 char initSequence = '#';
 char logSequence = '?';
 uint8_t logMsgSequence[2] = {0x41, 0x88};
+uint8_t log_available = 0;
 
 
 
@@ -133,42 +135,64 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    /* ranging request received */
-    if ((char)msgIdBuffer == initSequence)
-    {
-      /* initiate ranging */
-      state = INITIATOR;
-
-      /* reset messageID buffer */
-      msgIdBuffer = '0';
-
-      /* prepare for reception of message ID */
-      HAL_UART_Receive_IT(&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
-
-    }
-    /* logging request received */
-    else if((char)msgIdBuffer == logSequence)
-    {
-      /* reset messageID buffer */
-      msgIdBuffer = '0';
-
-      /* prepare for reception of log message */
-      HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
-    }
-    /* log message received */
-    else if(memcmp(logMsgBuffer, logMsgSequence, 2) == 0)
-    {
-      /* forward log message to uwb node */
-      send_log_msg(logMsgBuffer);
-
-      /* prepare for reception of message ID */
-      HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
-    }
-    /* nonsense received */
+    /* print message counter */
+    uint8_t ctr = logMsgBuffer[3];
+    printf("%d\n", ctr);
+    if(ctr%2==0)
+      HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
     else
-    {
-      HAL_UART_Receive_IT(&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
-    }
+      HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
+
+    log_available = 1;
+    HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+
+    /* prepare for reception of message ID */
+    // /* ranging request received */
+    // if ((char)msgIdBuffer == initSequence)
+    // {
+    //   /* initiate ranging */
+    //   state = INITIATOR;
+
+    //   /* reset messageID buffer */
+    //   msgIdBuffer = '0';
+
+    //   /* prepare for reception of message ID */
+    //   HAL_UART_Receive_IT(&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
+
+    // }
+    // /* logging request received */
+    // else if((char)msgIdBuffer == logSequence)
+    // {
+    //   /* reset messageID buffer */
+    //   msgIdBuffer = '0';
+
+    //   /* prepare for reception of log message */
+    //   HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+    // }
+    // /* log message received */
+    // else if(memcmp(logMsgBuffer, logMsgSequence, 2) == 0)
+    // {
+    //   /* forward log message to uwb node */
+    //   // send_log_msg(logMsgBuffer);
+
+    //   /* print message counter */
+    //   uint8_t ctr = logMsgBuffer[2];
+    //   // printf("%d\n", ctr);
+    //   if(ctr%2==0)
+    //     HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
+    //   else
+    //     HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
+
+
+    //   /* prepare for reception of message ID */
+    //   HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
+    // }
+    // /* nonsense received */
+    // else
+    // {
+    //   msgIdBuffer = '0';
+    //   HAL_UART_Receive_IT(&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
+    // }
   }
 }
 
