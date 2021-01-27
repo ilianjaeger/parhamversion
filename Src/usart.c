@@ -28,18 +28,10 @@
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart3;
-uint8_t msgIdBuffer;
 uint8_t logMsgBuffer[LOG_MSG_SIZE];
-char initSequence = '#';
-char logSequence = '?';
-uint8_t logMsgSequence[2] = {0x41, 0x88};
 uint8_t log_available = 0;
 
-
-
-
 /* USART3 init function */
-
 void MX_USART3_UART_Init(void)
 {
 
@@ -57,7 +49,7 @@ void MX_USART3_UART_Init(void)
     {
       Error_Handler ();
     }
-  HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
+  HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
 }
 
 void HAL_UART_MspInit (UART_HandleTypeDef *uartHandle)
@@ -87,7 +79,7 @@ void HAL_UART_MspInit (UART_HandleTypeDef *uartHandle)
       /* UART3 interrupt Init */
       HAL_NVIC_SetPriority (USART3_IRQn, 0, 0);
       HAL_NVIC_EnableIRQ (USART3_IRQn);
-      __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
+      //__HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
 
       /* USER CODE BEGIN USART3_MspInit 1 */
 
@@ -211,8 +203,8 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    /* prepare for reception of message ID */
-    HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
+    /* prepare for reception of next message */
+    HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
   }
 }
 

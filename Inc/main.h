@@ -48,7 +48,7 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 #define LOG_MSG_SIZE 24
-#define LOG_MSG_COMMON_LEN 4
+#define LOG_MSG_COMMON_LEN 1
 
 /* USER CODE END EM */
 
