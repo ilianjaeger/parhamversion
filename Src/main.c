@@ -227,7 +227,7 @@ uint64_t t1 = 0;
 uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
-tag_FSM_state_t state = IDLE;
+tag_FSM_state_t state = SEND_LOG;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
