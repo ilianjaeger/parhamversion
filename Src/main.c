@@ -62,7 +62,6 @@
 
 /* Length of the common part of the message (up to and including the function code, see NOTE 3 below). */
 #define ALL_MSG_COMMON_LEN 10
-#define LOG_MSG_COMMON_LEN 4
 /* Indexes to access some of the fields in the frames defined above. */
 #define ALL_MSG_SN_IDX 2
 #define FINAL_MSG_POLL_TX_TS_IDX 10
@@ -191,13 +190,13 @@ static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x1
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCC, 0xDD, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
 //static uint8 tx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 tx_log_msg[24];
+static uint8_t tx_log_msg[24];
 
 static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0}; /* Actually not needed */
-static uint8 rx_log_msg[] = {0x41, 0x88, 0, 0xCC, 0xDD, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t rx_log_msg[] = {0x41, 0x88, 0, 0xCC, 0xDD, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb_initiator = 0;
@@ -227,7 +226,7 @@ uint64_t t1 = 0;
 uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
-tag_FSM_state_t state = SEND_LOG;
+tag_FSM_state_t state = IDLE;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -334,6 +333,9 @@ int main(void)
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
   MX_USART3_UART_Init();
+
+  /* Initilizing Decawave module for responder configuration */
+  MX_DWM_Init(1);
     /* USER CODE BEGIN 2 */
 
 	HAL_Delay (3000);
@@ -345,7 +347,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   //uint8_t* testMsgBytes = (uint8_t *) &testMsg;
 
-  MX_DWM_Init(1);
   while (1)
   {
 		/* State machine of the application, application starts in IDLE mode and configs for responder,
@@ -356,15 +357,14 @@ int main(void)
 		{
 			case IDLE: 
 				//printf ("IDLE state\n");
-				/* Initilizing Decawave module for responder configuration */
-				// MX_DWM_Init(1);
+
 				HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 				state = RECEIVE_I;
 				break;
 
 			case RECEIVE_I:
 				//printf("STATE RECEIVE_I\n");
-				// HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
+				HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 				 /* Clear reception timeout to start next ranging process. */
 				dwt_setrxtimeout(0);
 				/* Activate reception immediately. */
@@ -378,14 +378,14 @@ int main(void)
 			case PROCESS:
 				t2 = HAL_GetTick() - t1;
 				ranges[numRanged] = distance;
-				printf("Measurement: %d, Distance: %f, Time: %llu\n",numRanged,distance,t2);
+				printf("Measurement: %d, Distance: %f, Time: %li\n",numRanged,distance,(long int) t2);
 				numRanged++;
 
 				state = RECEIVE_I;
 				break; 
 			
 			case INITIATOR:
-				/* Initilizing Decawave module for initiator configuration */
+				/* Initializing Decawave module for initiator configuration */
 				HAL_NVIC_DisableIRQ (EXTI2_IRQn);
 				//printf("INITIATOR state\n");
     
@@ -399,23 +399,14 @@ int main(void)
 				state = IDLE ;
 				break; 
 
+      /* SEND_LOG: Enter this state after log msg is received over USART. Send log msg over UWB to node */
       case SEND_LOG:
         if(log_available)
         {
-          // dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0); /* Zero offset in TX buffer. */
-          // dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
-
-          // dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
-
-          // while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
-          // { };
-
-
-          int ret;
           /* Send log message. See NOTE 8 below. */
-          //tx_log_msg[ALL_MSG_SN_IDX] = frame_seq_nb_log;
-          dwt_writetxdata(sizeof(logMsgBuffer), logMsgBuffer, 0); /* Zero offset in TX buffer. */
-          dwt_writetxfctrl(sizeof(logMsgBuffer), 0, 1); /* Zero offset in TX buffer, not ranging. */
+          int ret;
+          dwt_writetxdata(sizeof(logMsgBuffer), logMsgBuffer, 0);   /* Zero offset in TX buffer. */
+          dwt_writetxfctrl(sizeof(logMsgBuffer), 0, 1);             /* Zero offset in TX buffer, not ranging. */
           ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
 
           /* If dwt_starttx() returns an error, abandon this log transmission. */
@@ -427,12 +418,12 @@ int main(void)
 
             /* Clear TXFRS event. */
             dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
-
-            /* Increment frame sequence number after transmission of the log message (modulo 256). */
-            //frame_seq_nb_log++;
           }
-
+          /* wait until next log msg is available */
           log_available = 0;
+
+          /* enable reception of next log message */
+          HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
         }
 
         break;

@@ -33,17 +33,15 @@
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart3;
+extern uint8_t logMsgBuffer[LOG_MSG_SIZE];
+extern uint8_t log_available;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
-void MX_USART3_UART_Init(void);
-extern uint8_t logMsgBuffer[LOG_MSG_SIZE];
-extern uint8_t log_available;
-
 /* USER CODE BEGIN Prototypes */
-
+void MX_USART3_UART_Init(void);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

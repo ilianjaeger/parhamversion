@@ -135,16 +135,27 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    /* print message counter */
-    uint8_t ctr = logMsgBuffer[3];
-    printf("%d\n", ctr);
-    if(ctr%2==0)
-      HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
-    else
-      HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
+    if(memcmp(logMsgBuffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
+    {
+      /* print message counter*/
+      uint8_t ctr = logMsgBuffer[3];
+      printf("%d\n", ctr);
+      /* toggle LED */
+      if(ctr%2==0)
+        HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
+      else
+        HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 
-    log_available = 1;
-    HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+      log_available = 1;
+      state = SEND_LOG;
+    }
+    else
+    {
+      /* enable reception of log message */
+      HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+      state = SEND_LOG;
+    }
+    
 
     /* prepare for reception of message ID */
     // /* ranging request received */

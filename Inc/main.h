@@ -48,6 +48,8 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 #define LOG_MSG_SIZE 24
+#define LOG_MSG_COMMON_LEN 4
+
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
@@ -76,6 +78,7 @@ typedef enum
 } tag_FSM_state_t;
 
 extern tag_FSM_state_t state;
+extern uint8_t rx_log_msg[];
 
 /* USER CODE END EFP */
 
