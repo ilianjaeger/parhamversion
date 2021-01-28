@@ -357,7 +357,8 @@ int main(void)
 		{
 			case IDLE: 
 				//printf ("IDLE state\n");
-
+        // READ_REG(huart3.Instance->RDR);
+        // HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
 				HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 				state = RECEIVE_I;
 				break;

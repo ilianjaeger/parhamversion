@@ -28,6 +28,7 @@
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart3;
+uint8_t msgIdBuffer;
 uint8_t logMsgBuffer[LOG_MSG_SIZE];
 uint8_t log_available = 0;
 
@@ -49,7 +50,7 @@ void MX_USART3_UART_Init(void)
     {
       Error_Handler ();
     }
-  HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+  HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
 }
 
 void HAL_UART_MspInit (UART_HandleTypeDef *uartHandle)
@@ -204,6 +205,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   if(huart->Instance == USART3)
   {
     /* prepare for reception of next message */
+    // READ_REG(huart3.Instance->RDR);
     HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
   }
 }
