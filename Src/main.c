@@ -315,6 +315,7 @@ int main(void)
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
+  HAL_Delay (10000);
 
   /* USER CODE BEGIN Init */
 
@@ -333,12 +334,8 @@ int main(void)
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
   MX_USART3_UART_Init();
-
-  /* Initilizing Decawave module for responder configuration */
-  MX_DWM_Init(1);
     /* USER CODE BEGIN 2 */
 
-	HAL_Delay (3000);
 	printf("Starting the Great Application!!\n");
 	
   /* USER CODE END 2 */
@@ -347,6 +344,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   //uint8_t* testMsgBytes = (uint8_t *) &testMsg;
 
+  /* Initilizing Decawave module for responder configuration */
+  MX_DWM_Init(1);
+  HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+  
   while (1)
   {
 		/* State machine of the application, application starts in IDLE mode and configs for responder,
@@ -432,9 +433,9 @@ int main(void)
         case PRINT_LOG: ;
           uint8_t t1;
           t1 = (uint8_t) HAL_GetTick();
-          for(int i=0; i<sizeof(rx_buffer);i++)
+          for(int i=0; i<sizeof(logMsgBuffer);i++)
           {
-            printf("%d, ", rx_buffer[i]);
+            printf("%d, ", logMsgBuffer[i]);
           }
           uint8_t delta = (uint8_t) (HAL_GetTick()) - t1;
           printf("time %d, ", delta);

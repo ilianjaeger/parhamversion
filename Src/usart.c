@@ -50,7 +50,7 @@ void MX_USART3_UART_Init(void)
     {
       Error_Handler ();
     }
-  HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
+  // HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
 }
 
 void HAL_UART_MspInit (UART_HandleTypeDef *uartHandle)
@@ -73,14 +73,14 @@ void HAL_UART_MspInit (UART_HandleTypeDef *uartHandle)
       GPIO_InitStruct.Pin = GPIO_PIN_10 | GPIO_PIN_11;
       GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
       GPIO_InitStruct.Pull = GPIO_NOPULL;
-      GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+      GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
       GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
       HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
 
       /* UART3 interrupt Init */
       HAL_NVIC_SetPriority (USART3_IRQn, 0, 0);
       HAL_NVIC_EnableIRQ (USART3_IRQn);
-      //__HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
+      // __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
 
       /* USER CODE BEGIN USART3_MspInit 1 */
 
@@ -131,13 +131,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     if(memcmp(logMsgBuffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
     {
       /* print message counter*/
-      uint8_t ctr = logMsgBuffer[3];
-      printf("%d\n", ctr);
+      // uint8_t ctr = logMsgBuffer[3];
+      // printf("%d\n", ctr);
       /* toggle LED */
-      if(ctr%2==0)
-        HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
-      else
-        HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
+      // if(ctr%2==0)
+      //   HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
+      // else
+      //   HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 
       log_available = 1;
       state = SEND_LOG;
