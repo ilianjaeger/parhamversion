@@ -425,7 +425,7 @@ int main(void)
           log_available = 0;
 
           /* enable reception of next log message */
-          HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+          // HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
         }
 
         break;
@@ -433,9 +433,9 @@ int main(void)
         case PRINT_LOG: ;
           uint8_t t1;
           t1 = (uint8_t) HAL_GetTick();
-          for(int i=0; i<sizeof(logMsgBuffer);i++)
+          for(int i=0; i<sizeof(rx_buffer);i++)
           {
-            printf("%d, ", logMsgBuffer[i]);
+            printf("%d, ", rx_buffer[i]);
           }
           uint8_t delta = (uint8_t) (HAL_GetTick()) - t1;
           printf("time %d, ", delta);
@@ -1034,7 +1034,7 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
     else
     {
       printf("Nothing received...\n");
-      state = RECEIVE_I;
+      state = PRINT_LOG;
     }
 }
  
