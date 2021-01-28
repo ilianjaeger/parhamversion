@@ -336,6 +336,7 @@ int main(void)
   MX_USART3_UART_Init();
     /* USER CODE BEGIN 2 */
 
+  HAL_Delay(3000);
 	printf("Starting the Great Application!!\n");
 	
   /* USER CODE END 2 */
@@ -346,7 +347,6 @@ int main(void)
 
   /* Initilizing Decawave module for responder configuration */
   MX_DWM_Init(1);
-  HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
   
   while (1)
   {
@@ -358,8 +358,7 @@ int main(void)
 		{
 			case IDLE: 
 				//printf ("IDLE state\n");
-        // READ_REG(huart3.Instance->RDR);
-        // HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+        HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
 				HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 				state = RECEIVE_I;
 				break;
