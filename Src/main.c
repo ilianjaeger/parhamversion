@@ -1014,7 +1014,6 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
             //printf("Sending Error\n");
         }
         //printf("Response sent, waiting for final reception\n");
-
         
         /* Increment frame sequence number after transmission of the response message (modulo 256). */
         frame_seq_nb_responder++;
@@ -1079,7 +1078,7 @@ static void rx_ok_cb_log(const dwt_cb_data_t *cb_data){
     }
     else
     {
-      printf("Nothing received...\n");
+      printf("Nonsense message received...\n");
       state = PRINT_LOG;
     }
 }

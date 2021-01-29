@@ -128,7 +128,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    // HAL_NVIC_DisableIRQ(EXTI2_IRQn);
     if(memcmp(logMsgBuffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
     {
       /* print message counter*/
@@ -141,8 +140,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       //   HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 
       log_available = 1;
-      /* enable reception of next log message */
-      //HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
     }
     else
     {
@@ -150,54 +147,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
     }
     state = SEND_LOG;
-
-    /* prepare for reception of message ID */
-    // /* ranging request received */
-    // if ((char)msgIdBuffer == initSequence)
-    // {
-    //   /* initiate ranging */
-    //   state = INITIATOR;
-
-    //   /* reset messageID buffer */
-    //   msgIdBuffer = '0';
-
-    //   /* prepare for reception of message ID */
-    //   HAL_UART_Receive_IT(&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
-
-    // }
-    // /* logging request received */
-    // else if((char)msgIdBuffer == logSequence)
-    // {
-    //   /* reset messageID buffer */
-    //   msgIdBuffer = '0';
-
-    //   /* prepare for reception of log message */
-    //   HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
-    // }
-    // /* log message received */
-    // else if(memcmp(logMsgBuffer, logMsgSequence, 2) == 0)
-    // {
-    //   /* forward log message to uwb node */
-    //   // send_log_msg(logMsgBuffer);
-
-    //   /* print message counter */
-    //   uint8_t ctr = logMsgBuffer[2];
-    //   // printf("%d\n", ctr);
-    //   if(ctr%2==0)
-    //     HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
-    //   else
-    //     HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
-
-
-    //   /* prepare for reception of message ID */
-    //   HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
-    // }
-    // /* nonsense received */
-    // else
-    // {
-    //   msgIdBuffer = '0';
-    //   HAL_UART_Receive_IT(&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
-    // }
   }
 }
 
