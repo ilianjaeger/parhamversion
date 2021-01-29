@@ -74,6 +74,7 @@ typedef enum
     PROCESS,
     INITIATOR,
     INITIALIZE_UWB_BOARD,
+    INITIALIZE_UWB_NODE_LOG,
     SEND_LOG,
     PRINT_LOG,
 } tag_FSM_state_t;

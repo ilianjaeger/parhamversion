@@ -364,7 +364,7 @@ int main(void)
 			case IDLE: 
 				//printf ("IDLE state\n");
         /* Initializing Decawave module for responder configuration (responder = 1) */
-        MX_DWM_Init(2);
+        MX_DWM_Init(1);
         /* enable uwb interrupts */
 				HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 				state = RECEIVE_I;
@@ -406,6 +406,16 @@ int main(void)
 
 				state = SEND_LOG ;
 				break; 
+
+      case INITIALIZE_UWB_NODE_LOG:
+
+        /* Initializing Decawave module for logger configuration (logger = 2) */
+        MX_DWM_Init (2);
+
+        /* enable uwb interrupts */
+        HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+        state = RECEIVE_I;
+        break;
 
       /* INITIALIZE_UWB_BOARD: Initialization of the uwb board attached to the drone */
       case INITIALIZE_UWB_BOARD:
@@ -1281,8 +1291,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
     else if (GPIO_Pin == Button_Pin)
     {
-			if (state != INITIATOR)
-				state = INITIATOR;
+      state = INITIALIZE_UWB_NODE_LOG;
     }
 }
 
