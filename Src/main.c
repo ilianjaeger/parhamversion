@@ -403,7 +403,7 @@ int main(void)
         /* send received distance byte-wise over USART3 */
         HAL_UART_Transmit_IT(&huart3, (uint8_t *) &distance, REPORT_MSG_LEN);
 
-				state = IDLE ;
+				state = SEND_LOG ;
 				break; 
 
       /* INITIALIZE_UWB_BOARD: Initialization of the uwb board attached to the drone */
@@ -421,9 +421,8 @@ int main(void)
       case SEND_LOG:
         if(log_available)
         {
+          /* send log message over UWB to node */
           send_log_msg(logMsgBuffer);
-          
-          /* wait until next log msg is available */
           log_available = 0;
           
           /* enable reception of next log message */
