@@ -421,22 +421,8 @@ int main(void)
       case SEND_LOG:
         if(log_available)
         {
-          /* Send log message. See NOTE 8 below. */
-          int ret;
-          dwt_writetxdata(sizeof(logMsgBuffer), logMsgBuffer, 0);   /* Zero offset in TX buffer. */
-          dwt_writetxfctrl(sizeof(logMsgBuffer), 0, 0);             /* Zero offset in TX buffer, not ranging. */
-          ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
-
-          /* If dwt_starttx() returns an error, abandon this log transmission. */
-          if (ret == DWT_SUCCESS)
-          {
-            /* Poll DW1000 until TX frame sent event set. See NOTE 9 below. */
-            while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
-            { };
-
-            /* Clear TXFRS event. */
-            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
-          }
+          send_log_msg(logMsgBuffer);
+          
           /* wait until next log msg is available */
           log_available = 0;
           
