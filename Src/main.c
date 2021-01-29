@@ -256,7 +256,7 @@ uint64_t getRxTimestamp(void);
 uint64_t getTxTimestamp(void);
 
 /* Declaration of static functions. */
-static void MX_DWM_Init(volatile bool responder);
+static void MX_DWM_Init(volatile uint8_t type);
 static void initiator_go (uint16_t numMeasure);
 static void final_msg_get_ts(const uint8 *ts_field, uint32 *ts);
 static void final_msg_set_ts(uint8 *ts_field, uint64 ts);
@@ -364,7 +364,7 @@ int main(void)
 			case IDLE: 
 				//printf ("IDLE state\n");
         /* Initializing Decawave module for responder configuration (responder = 1) */
-        MX_DWM_Init(1);
+        MX_DWM_Init(2);
         /* enable uwb interrupts */
 				HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 				state = RECEIVE_I;
@@ -410,7 +410,7 @@ int main(void)
       /* INITIALIZE_UWB_BOARD: Initialization of the uwb board attached to the drone */
       case INITIALIZE_UWB_BOARD:
 
-        /* Initializing Decawave module for non-responder configuration (responder = 0) */
+        /* Initializing Decawave module for initiator configuration (initiator = 0) */
         MX_DWM_Init (0);  
         /* Enable USART interrupts */
         HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
@@ -673,11 +673,13 @@ static void MX_GPIO_Init(void)
 	/************************************************ DECAWAVE *******************************/
 /**
   * @brief Decawave Initialization Function
-  * @param responder	parameter to select responder or initiator mode, to set callbacks for the responder or set the fixed
-						time variables for the initiator
+  * @param type
+            - 0 = sender: initiator mode, et the fixed time variables for the initiator
+            - 1 = responder: set callbacks for the uwb node used for ranging
+            - 2 = logger: set callbacks for the uwb node that is receiving log messages
   * @retval None
   */
-static void MX_DWM_Init(volatile bool responder)
+static void MX_DWM_Init(volatile uint8_t type)
 {
 	/* Reduce spi baudrate to send commands to the Decawave module */
 	HAL_SPI_DeInit (&hspi1);
@@ -727,12 +729,17 @@ static void MX_DWM_Init(volatile bool responder)
 	else
 		Error_Handler();
 	
-	/* If the application is in the responder mode, it should sets the callbacks */
-	if (responder == 1){
-		dwt_setcallbacks(&tx_conf_cb, &rx_ok_cb_log, &rx_to_cb, &rx_err_cb);
-    // dwt_setcallbacks(&tx_conf_cb, &rx_ok_cb, &rx_to_cb, &rx_err_cb);
+	/* Set callbacks for responder */
+	if (type == 1){
+    dwt_setcallbacks(&tx_conf_cb, &rx_ok_cb, &rx_to_cb, &rx_err_cb);
 		dwt_setinterrupt(DWT_INT_TFRS | DWT_INT_RFCG | DWT_INT_RFTO | DWT_INT_RXPTO | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFSL | DWT_INT_SFDT, 1);
 	}
+  /* Set callbacks for logger */
+  if (type == 2){
+    dwt_setcallbacks(&tx_conf_cb, &rx_ok_cb_log, &rx_to_cb, &rx_err_cb);
+    dwt_setinterrupt(DWT_INT_TFRS | DWT_INT_RFCG | DWT_INT_RFTO | DWT_INT_RXPTO | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFSL | DWT_INT_SFDT, 1);
+  }
+
 	
 	/* Apply default antenna delay value. See NOTE 2 below. */
   dwt_setrxantennadelay(RX_ANT_DLY);
@@ -745,7 +752,7 @@ static void MX_DWM_Init(volatile bool responder)
 
 	/* If the application is in the initiator mode, set expected response's delay and timeout. See NOTE 1 and 5 below.
 		* As this example only handles one incoming frame with always the same delay and timeout, those values can be set here once for all. */
-	if (responder ==0){
+	if (type ==0){
 		dwt_setrxaftertxdelay(POLL_TX_TO_RESP_RX_DLY_UUS);
 		dwt_setrxtimeout(RESP_RX_TIMEOUT_UUS);
 	}
