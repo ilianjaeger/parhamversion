@@ -72,7 +72,8 @@
 #define REPORT_MSG_DIST_IDX 10
 #define REPORT_MSG_LEN sizeof(double) // 8 bytes
 
-#define LOG_MSG_IDENTIFIER_IDX 3
+#define LOG_MSG_IDENTIFIER_IDX 1
+#define LOG_MSG_COUNTER_IDX 2
 
 /* Buffer to store received response message.
  * Its size is adjusted to longest frame that this example code is supposed to handle. */
@@ -266,6 +267,7 @@ static void rx_ok_cb_log(const dwt_cb_data_t *cb_data);
 static void rx_to_cb(const dwt_cb_data_t *);
 static void rx_err_cb(const dwt_cb_data_t *);
 
+static void printLog(char c);
 static double doubleFromBytes(uint8_t *buffer, uint8_t offset);
 static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset);
 static uint32_t timeMsFromBytes(uint8_t *buffer, uint8_t offset);
@@ -443,15 +445,9 @@ int main(void)
         break;
 
         case PRINT_LOG: ;
-          uint8_t t1;
-          t1 = (uint8_t) HAL_GetTick();
-          for(int i=0; i<sizeof(rx_buffer);i++)
-          {
-            printf("%d, ", rx_buffer[i]);
-          }
-          uint8_t delta = (uint8_t) (HAL_GetTick()) - t1;
-          printf("time %d, ", delta);
-          printf("\n");
+
+          char logMsgIdentifier = charFromBytes(rx_buffer, LOG_MSG_IDENTIFIER_IDX);
+          printLog(logMsgIdentifier);
           
           state = RECEIVE_I;
           break;
@@ -1048,37 +1044,12 @@ static void rx_ok_cb_log(const dwt_cb_data_t *cb_data){
     
     if(memcmp(rx_buffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
     {
-      /* get values embedded in the message */
-      //char logMsgSequence = charFromBytes(rx_buffer, LOG_MSG_IDENTIFIER_IDX);
-
-      /* print values */
-        //printf("log message received.\n");
-
-
-      // if(logMsgSequence == 'p')
-      // {
-        
-      //   /* positon logging */
-      //   uint32_t timeMs = timeMsFromBytes(rx_buffer, 4);
-      //   float x = coordinateFromBytes(rx_buffer, 8);
-      //   float y = coordinateFromBytes(rx_buffer, 12);
-      //   printf("time: %li, x: %f, y: %f \n", (long int) timeMs, x, y);
-      // }
-      // else if(logMsgSequence == 'm')
-      // {
-      //   /* measurements logging */
-      //   float x = coordinateFromBytes(rx_buffer, 4);
-      //   float y = coordinateFromBytes(rx_buffer, 8);
-      //   double r = doubleFromBytes(rx_buffer,12);
-      //   printf("x: %f, y: %f, r: %lf\n", x, y, r);
-      // }
-
       /* enable UWB reception */
       state = PRINT_LOG;
     }
     else
     {
-      printf("Nonsense message received...\n");
+      printf("Nonsense message received: \n");
       state = PRINT_LOG;
     }
 }
@@ -1322,6 +1293,47 @@ void Error_Handler(void)
 /*******************************************************************************
                   helper functions
 ********************************************************************************/
+
+static void printLog(char c)
+{
+      /* get frame counter */
+      uint8_t ctr = rx_buffer[LOG_MSG_COUNTER_IDX];
+
+      if(c == 'p')
+      {
+        /* positon logging */
+        uint32_t timeMs = timeMsFromBytes(rx_buffer, 4);
+        float x = coordinateFromBytes(rx_buffer, 8);
+        float y = coordinateFromBytes(rx_buffer, 12);
+        printf("frame no.: %d, time: %li, x: %f, y: %f \n", ctr, (long int) timeMs, x, y);
+      }
+      else if(c == 'm')
+      {
+        /* measurements logging */
+        float x = coordinateFromBytes(rx_buffer, 4);
+        float y = coordinateFromBytes(rx_buffer, 8);
+        double r = doubleFromBytes(rx_buffer,12);
+        printf("frame no.: %d, x: %f, y: %f, r: %lf\n", ctr, x, y, r);
+      }
+      else if(c == 'a')
+      {
+        uint8_t t1;
+        t1 = (uint8_t) HAL_GetTick();
+        for(int i=0; i<sizeof(rx_buffer);i++)
+        {
+          printf("%d, ", rx_buffer[i]);
+        }
+        uint8_t delta = (uint8_t) (HAL_GetTick()) - t1;
+        printf(" time %d, ", delta);
+        printf("\n");
+          
+      }
+      else
+      {
+        printf("invalid message identifier\n");
+      }
+
+}
 
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn doubleFromBytes()
