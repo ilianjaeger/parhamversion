@@ -228,9 +228,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-tag_FSM_state_t state = IDLE;
+// tag_FSM_state_t state = IDLE;
 /* for uwb board attached to drone */
-// tag_FSM_state_t state = INITIALIZE_UWB_BOARD;
+tag_FSM_state_t state = INITIALIZE_UWB_BOARD;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -273,7 +273,7 @@ static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset);
 static uint32_t timeMsFromBytes(uint8_t *buffer, uint8_t offset);
 static float coordinateFromBytes(uint8_t *buffer, uint8_t offset);
 static char charFromBytes(uint8_t *buffer, uint8_t offset);
-static void reportMsgWriteDist(double msgDouble);
+static void doubleToBytes(uint8_t bytes[], uint8_t bytesSize, double dbl, uint8_t offset);
 static double reportMsgReadDist(void);
 
 /* USER CODE END PFP */
@@ -771,43 +771,6 @@ static void MX_DWM_Init(volatile uint8_t type)
 
 
 /*! ------------------------------------------------------------------------------------------------------------------
- * @fn reportMsgWriteDist()
- *
- * @brief Write distance into report message to according offset
- *
- * @param  Double distance
- *
- * @return 
- */
-static void reportMsgWriteDist(double msgDouble)
-{
-  uint8_t* msgBytes = (uint8_t *) &msgDouble;
-  for(int i = 0; i < REPORT_MSG_LEN; i++)
-        {
-            tx_report_msg[i + REPORT_MSG_DIST_IDX] = msgBytes[i];
-        }
-}
-
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn reportMsgReadDist()
- *
- * @brief Read distance from report message from according offset
- *
- * @param 
- *
- * @return Double distance
- */
-static double reportMsgReadDist(void)
-{
-  uint8_t msgBytes[REPORT_MSG_LEN];
-  for(int i = 0; i < REPORT_MSG_LEN; i++)
-        {
-            msgBytes[i] = rx_report_msg[i + REPORT_MSG_DIST_IDX];
-        }
-  return doubleFromBytes(msgBytes, 0);
-}
-
-/*! ------------------------------------------------------------------------------------------------------------------
  * @fn get_tx_timestamp_u64()
  *
  * @brief Get the TX time-stamp in a 64-bit variable.
@@ -999,7 +962,7 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
         /* Write and send the report message.*/
         tx_report_msg[ALL_MSG_SN_IDX] = frame_seq_nb_responder;
         // add distance to message
-        reportMsgWriteDist(distance);
+        doubleToBytes(tx_report_msg, sizeof(tx_report_msg), distance, REPORT_MSG_DIST_IDX);
         dwt_writetxdata(sizeof(tx_report_msg), tx_report_msg, 0); /* Zero offset in TX buffer. */
         dwt_writetxfctrl(sizeof(tx_report_msg), 0, 0); /* Zero offset in TX buffer, no ranging. */
         ret = dwt_starttx(DWT_START_TX_IMMEDIATE); /* No response expected*/
@@ -1294,6 +1257,15 @@ void Error_Handler(void)
                   helper functions
 ********************************************************************************/
 
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn printLog()
+ *
+ * @brief Interpret and print received log message, depending on log message identifier
+ *
+ * @param  c - log message indentifier
+ *
+ * @return  none
+ */
 static void printLog(char c)
 {
       /* get frame counter */
@@ -1379,6 +1351,28 @@ static char charFromBytes(uint8_t *buffer, uint8_t offset)
   char c;
   memcpy(&c, buffer + offset, sizeof(char));
   return c;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn doubleToBytes()
+ *
+ * @brief Write double into into uint8_t array at according offset
+ *
+ * @param  dbl: Double to be written 
+ * @param  offet: offset at which double should be written
+ *
+ * @return 
+ */
+static void doubleToBytes(uint8_t bytes[], uint8_t bytesSize, double dbl, uint8_t offset)
+{
+  uint8_t* dblBytes = (uint8_t *) &dbl;
+  if(offset + sizeof(double) <= bytesSize)
+  {
+    for(int i = 0; i < sizeof(double); i++)
+    {
+      bytes[i + offset] = dblBytes[i];
+    }
+  }
 }
 
 #ifdef  USE_FULL_ASSERT
