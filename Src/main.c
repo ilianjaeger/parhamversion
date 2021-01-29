@@ -227,9 +227,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-// tag_FSM_state_t state = IDLE;
+tag_FSM_state_t state = IDLE;
 /* for uwb board attached to drone */
-tag_FSM_state_t state = INITIALIZE_UWB_BOARD;
+// tag_FSM_state_t state = INITIALIZE_UWB_BOARD;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -262,6 +262,7 @@ static void final_msg_get_ts(const uint8 *ts_field, uint32 *ts);
 static void final_msg_set_ts(uint8 *ts_field, uint64 ts);
 static void tx_conf_cb(const dwt_cb_data_t *);
 static void rx_ok_cb(const dwt_cb_data_t *);
+static void rx_ok_cb_log(const dwt_cb_data_t *cb_data);
 static void rx_to_cb(const dwt_cb_data_t *);
 static void rx_err_cb(const dwt_cb_data_t *);
 
@@ -728,7 +729,8 @@ static void MX_DWM_Init(volatile bool responder)
 	
 	/* If the application is in the responder mode, it should sets the callbacks */
 	if (responder == 1){
-		dwt_setcallbacks(&tx_conf_cb, &rx_ok_cb, &rx_to_cb, &rx_err_cb);
+		dwt_setcallbacks(&tx_conf_cb, &rx_ok_cb_log, &rx_to_cb, &rx_err_cb);
+    // dwt_setcallbacks(&tx_conf_cb, &rx_ok_cb, &rx_to_cb, &rx_err_cb);
 		dwt_setinterrupt(DWT_INT_TFRS | DWT_INT_RFCG | DWT_INT_RFTO | DWT_INT_RXPTO | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFSL | DWT_INT_SFDT, 1);
 	}
 	
@@ -1002,7 +1004,29 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 
 				state = PROCESS;
 		}
-    else if(memcmp(rx_buffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
+}
+
+// @brief Callback to process RX OK events for the logging node
+static void rx_ok_cb_log(const dwt_cb_data_t *cb_data){
+
+  /* Clear good RX frame event in the DW1000 status register. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG);
+
+    /* Clear local RX buffer to avoid having leftovers from previous receptions. This is not necessary but is included here to aid reading the RX
+       * buffer. */
+    for (int i = 0 ; i < RX_BUF_LEN; i++ )
+    {
+      rx_buffer[i] = 0;
+
+    }
+    
+    /* A frame has been received, read it into the local buffer. */
+    if (cb_data->datalength <= RX_BUF_LEN)
+    {
+        dwt_readrxdata(rx_buffer, cb_data->datalength, 0);
+    }
+    
+    if(memcmp(rx_buffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
     {
       /* get values embedded in the message */
       //char logMsgSequence = charFromBytes(rx_buffer, LOG_MSG_IDENTIFIER_IDX);
@@ -1038,6 +1062,8 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
       state = PRINT_LOG;
     }
 }
+
+
  
 // @brief Callback to process RX timeout events
 static void rx_to_cb(const dwt_cb_data_t *cb_data){
