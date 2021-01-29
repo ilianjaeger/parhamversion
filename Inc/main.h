@@ -73,8 +73,9 @@ typedef enum
     WAIT,
     PROCESS,
     INITIATOR,
+    INITIALIZE_UWB_BOARD,
     SEND_LOG,
-    PRINT_LOG
+    PRINT_LOG,
 } tag_FSM_state_t;
 
 extern tag_FSM_state_t state;

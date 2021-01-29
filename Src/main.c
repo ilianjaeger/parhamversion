@@ -226,7 +226,10 @@ uint64_t t1 = 0;
 uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
-tag_FSM_state_t state = IDLE;
+/* for uwb node */
+// tag_FSM_state_t state = IDLE;
+/* for uwb board attached to drone */
+tag_FSM_state_t state = INITIALIZE_UWB_BOARD;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -315,7 +318,11 @@ int main(void)
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-  HAL_Delay (10000);
+  /* set delay for uwb board attached to the drone */
+  if(state == INITIALIZE_UWB_BOARD)
+  {
+    HAL_Delay (10000);
+  }
 
   /* USER CODE BEGIN Init */
 
@@ -344,9 +351,6 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   //uint8_t* testMsgBytes = (uint8_t *) &testMsg;
-
-  /* Initilizing Decawave module for responder configuration */
-  MX_DWM_Init(1);
   
   while (1)
   {
@@ -358,7 +362,9 @@ int main(void)
 		{
 			case IDLE: 
 				//printf ("IDLE state\n");
-        HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+        /* Initializing Decawave module for responder configuration (responder = 1) */
+        MX_DWM_Init(1);
+        /* enable uwb interrupts */
 				HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 				state = RECEIVE_I;
 				break;
@@ -400,6 +406,17 @@ int main(void)
 				state = IDLE ;
 				break; 
 
+      /* INITIALIZE_UWB_BOARD: Initialization of the uwb board attached to the drone */
+      case INITIALIZE_UWB_BOARD:
+
+        /* Initializing Decawave module for non-responder configuration (responder = 0) */
+        MX_DWM_Init (0);  
+        /* Enable USART interrupts */
+        HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+        /* Prepare for sending logs over uwb */
+        state = SEND_LOG;
+        break;
+
       /* SEND_LOG: Enter this state after log msg is received over USART. Send log msg over UWB to node */
       case SEND_LOG:
         if(log_available)
@@ -407,7 +424,7 @@ int main(void)
           /* Send log message. See NOTE 8 below. */
           int ret;
           dwt_writetxdata(sizeof(logMsgBuffer), logMsgBuffer, 0);   /* Zero offset in TX buffer. */
-          dwt_writetxfctrl(sizeof(logMsgBuffer), 0, 1);             /* Zero offset in TX buffer, not ranging. */
+          dwt_writetxfctrl(sizeof(logMsgBuffer), 0, 0);             /* Zero offset in TX buffer, not ranging. */
           ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
 
           /* If dwt_starttx() returns an error, abandon this log transmission. */
@@ -422,9 +439,9 @@ int main(void)
           }
           /* wait until next log msg is available */
           log_available = 0;
-
+          
           /* enable reception of next log message */
-          // HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+          HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
         }
 
         break;
