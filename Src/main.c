@@ -1021,6 +1021,10 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 
 				state = PROCESS;
 		}
+    else
+    {
+      state = RECEIVE_I;
+    }
 }
 
 // @brief Callback to process RX OK events for the logging node
@@ -1291,7 +1295,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
     else if (GPIO_Pin == Button_Pin)
     {
-      state = INITIALIZE_UWB_NODE_LOG;
+      if(state == SEND_LOG)
+      {
+        state = INITIATOR;
+      }
+      else if(state == WAIT)
+      {
+        state = INITIALIZE_UWB_NODE_LOG;
+      }
     }
 }
 
