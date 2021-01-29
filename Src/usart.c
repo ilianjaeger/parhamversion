@@ -142,7 +142,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
       log_available = 1;
       /* enable reception of next log message */
-      HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+      //HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
     }
     else
     {
