@@ -17,19 +17,15 @@
  ******************************************************************************
  */
 
-/* Includes ------------------------------------------------------------------*/
+/* Includes */
 #include "main.h"
 #include "usart.h"
 #include "string.h"
 #include <stdio.h>
 
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
-
+/* Variables */
 UART_HandleTypeDef huart3;
-uint8_t msgIdBuffer;
-uint8_t logMsgBuffer[LOG_MSG_SIZE];
+uint8_t uart_rx_buffer[UART_RX_BUF_LEN];
 uint8_t log_available = 0;
 
 /* USART3 init function */
@@ -50,7 +46,6 @@ void MX_USART3_UART_Init(void)
     {
       Error_Handler ();
     }
-  // HAL_UART_Receive_IT (&huart3, &msgIdBuffer, sizeof(msgIdBuffer));
 }
 
 void HAL_UART_MspInit (UART_HandleTypeDef *uartHandle)
@@ -128,28 +123,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    if(logMsgBuffer[0] == 'L')
+    if(uart_rx_buffer[0] == 'L')
     {
-      /* print message counter*/
-      // uint8_t ctr = logMsgBuffer[3];
-      // printf("%d\n", ctr);
-      /* toggle LED */
-      // if(ctr%2==0)
-      //   HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
-      // else
-      //   HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
-
       log_available = 1;
       state = SEND_LOG;
     }
-    else if(logMsgBuffer[0] == 'R')
+    else if(uart_rx_buffer[0] == 'R')
     {
       state = INITIATOR;
     }
     else
     {
       /* enable reception of nest USART message */
-      HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+      HAL_UART_Receive_IT(&huart3, uart_rx_buffer, sizeof(uart_rx_buffer));
       state = SEND_LOG;
     }
   }
@@ -160,8 +146,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   if(huart->Instance == USART3)
   {
     /* prepare for reception of next message */
-    // READ_REG(huart3.Instance->RDR);
-    HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+    HAL_UART_Receive_IT(&huart3, uart_rx_buffer, sizeof(uart_rx_buffer));
   }
 }
 

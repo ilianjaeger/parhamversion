@@ -32,13 +32,15 @@
 
 /* USER CODE END Includes */
 
-extern UART_HandleTypeDef huart3;
-extern uint8_t logMsgBuffer[LOG_MSG_SIZE];
-extern uint8_t log_available;
-
 /* USER CODE BEGIN Private defines */
 
+#define UART_RX_BUF_LEN 24
+
 /* USER CODE END Private defines */
+
+extern UART_HandleTypeDef huart3;
+extern uint8_t uart_rx_buffer[UART_RX_BUF_LEN];
+extern uint8_t log_available;
 
 /* USER CODE BEGIN Prototypes */
 void MX_USART3_UART_Init(void);

@@ -47,13 +47,10 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-#define LOG_MSG_SIZE 24
-#define LOG_MSG_COMMON_LEN 1
 
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-void send_log_msg(uint8_t logMsgBuffer[LOG_MSG_SIZE]);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */

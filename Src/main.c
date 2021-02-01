@@ -62,6 +62,7 @@
 
 /* Length of the common part of the message (up to and including the function code, see NOTE 3 below). */
 #define ALL_MSG_COMMON_LEN 10
+#define LOG_MSG_COMMON_LEN 1
 /* Indexes to access some of the fields in the frames defined above. */
 #define ALL_MSG_SN_IDX 2
 #define FINAL_MSG_POLL_TX_TS_IDX 10
@@ -75,9 +76,9 @@
 #define LOG_MSG_IDENTIFIER_IDX 1
 #define LOG_MSG_COUNTER_IDX 2
 
-/* Buffer to store received response message.
+/* Buffer to store received UWB messages.
  * Its size is adjusted to longest frame that this example code is supposed to handle. */
-#define RX_BUF_LEN 24
+#define UWB_MSG_BUF_LEN 24
 
 /* UWB microsecond (uus) to device time unit (dtu, around 15.65 ps) conversion factor.
  * 1 uus = 512 / 499.2 Ã¯Â¿Â½s and 1 Ã¯Â¿Â½s = 499.2 * 128 dtu. */
@@ -201,7 +202,8 @@ uint8_t rx_log_msg[24] = {'L'};
 static uint8 frame_seq_nb_initiator = 0;
 static uint8 frame_seq_nb_responder = 0;
 	
-static uint8 rx_buffer[RX_BUF_LEN];
+/* rx buffer for received UWB messages */
+static uint8 rx_buffer[UWB_MSG_BUF_LEN];
 
 /* Hold copy of status register state here for reference so that it can be examined at a debug breakpoint. */
 static uint32 status_reg = 0;
@@ -255,6 +257,7 @@ uint64_t getTxTimestamp(void);
 /* Declaration of static functions. */
 static void MX_DWM_Init(volatile uint8_t type);
 static void initiator_go (uint16_t numMeasure);
+static void send_log_msg(uint8_t log_msg_buffer[UWB_MSG_BUF_LEN]);
 static void final_msg_get_ts(const uint8 *ts_field, uint32 *ts);
 static void final_msg_set_ts(uint8 *ts_field, uint64 ts);
 static void tx_conf_cb(const dwt_cb_data_t *);
@@ -319,6 +322,8 @@ int main(void)
   /* set delay for uwb board attached to the drone */
   if(state == INITIALIZE_INITIATOR)
   {
+    /* It is important that the GPIOs of the UWB board are initialized AFTER the flight controller
+    is started up. If not, a zero will be in the USART RX shift register. */
     HAL_Delay (10000);
   }
 
@@ -352,10 +357,10 @@ int main(void)
   
   while (1)
   {
-		/* State machine of the application, application starts in INITIALIZE_RESPONDER mode and configs for responder,
+		/* TODO: adjust this description 
+      State machine of the application, application starts in INITIALIZE_RESPONDER mode and configs for responder,
 			then it goes to RECEIVE_I which enables RX, it then goes to WAIT state to wait for ranging to complete,
-			finally, whenever the ranging ends, the application goes to PROCESS state and sends measured distance to the host.
-			If the debug button is pressed, application goes into INITIATOR state and starts ranging for the specified number of times.*/
+			finally, whenever the ranging ends, the application goes to PROCESS state and sends measured distance to the host. */
 		switch (state)
 		{
       /* INITIALIZE RESPONDER: Initialize the UWB node that is responsible for ranging */
@@ -418,7 +423,7 @@ int main(void)
         MX_DWM_Init (0);
 
         /* Enable USART interrupts */
-        HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+        HAL_UART_Receive_IT(&huart3, uart_rx_buffer, sizeof(uart_rx_buffer));
 
         /* Prepare for sending logs over uwb */
         state = SEND_LOG;
@@ -429,11 +434,11 @@ int main(void)
         if(log_available)
         {
           /* send log message over UWB to node */
-          send_log_msg(logMsgBuffer);
+          send_log_msg(uart_rx_buffer);
           log_available = 0;
           
           /* enable reception of next log message */
-          HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+          HAL_UART_Receive_IT(&huart3, uart_rx_buffer, sizeof(uart_rx_buffer));
         }
 
         break;
@@ -451,7 +456,7 @@ int main(void)
         }
 
         /* enable reception of next USART message */
-        HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+        HAL_UART_Receive_IT(&huart3, uart_rx_buffer, sizeof(uart_rx_buffer));
 
         state = SEND_LOG ;
         break;
@@ -886,14 +891,14 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 
 		/* Clear local RX buffer to avoid having leftovers from previous receptions. This is not necessary but is included here to aid reading the RX
 			 * buffer. */
-		for (int i = 0 ; i < RX_BUF_LEN; i++ )
+		for (int i = 0 ; i < UWB_MSG_BUF_LEN; i++ )
 		{
 			rx_buffer[i] = 0;
 
 		}
 		
 		/* A frame has been received, read it into the local buffer. */
-		if (cb_data->datalength <= RX_BUF_LEN)
+		if (cb_data->datalength <= UWB_MSG_BUF_LEN)
 		{
 				dwt_readrxdata(rx_buffer, cb_data->datalength, 0);
 		}
@@ -1006,14 +1011,14 @@ static void rx_ok_cb_log(const dwt_cb_data_t *cb_data){
 
     /* Clear local RX buffer to avoid having leftovers from previous receptions. This is not necessary but is included here to aid reading the RX
        * buffer. */
-    for (int i = 0 ; i < RX_BUF_LEN; i++ )
+    for (int i = 0 ; i < UWB_MSG_BUF_LEN; i++ )
     {
       rx_buffer[i] = 0;
 
     }
     
     /* A frame has been received, read it into the local buffer. */
-    if (cb_data->datalength <= RX_BUF_LEN)
+    if (cb_data->datalength <= UWB_MSG_BUF_LEN)
     {
         dwt_readrxdata(rx_buffer, cb_data->datalength, 0);
     }
@@ -1098,7 +1103,7 @@ static void initiator_go (uint16_t numMeasure)
 
 				/* A frame has been received, read it into the local buffer. */
 				frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
-				if (frame_len <= RX_BUF_LEN)
+				if (frame_len <= UWB_MSG_BUF_LEN)
 				{
 						dwt_readrxdata(rx_buffer, frame_len, 0);
 				}
@@ -1168,7 +1173,7 @@ static void initiator_go (uint16_t numMeasure)
 
                 /* A frame has been received, read it into the local buffer. */
                 frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
-                if (frame_len <= RX_BUF_LEN)
+                if (frame_len <= UWB_MSG_BUF_LEN)
                 {
                   /* read distance*/
                   dwt_readrxdata(rx_buffer, frame_len, 0);   // read at 0 offset
@@ -1209,15 +1214,15 @@ static void initiator_go (uint16_t numMeasure)
 }
 
 /* @fn      send_log_msg
- * @brief   send log message received over USART
+ * @brief   send log message over UWB
  *          
  * */
-void send_log_msg(uint8_t logMsgBuffer[LOG_MSG_SIZE])
+void send_log_msg(uint8_t log_msg_buffer[UWB_MSG_BUF_LEN])
 {
   int ret;
   /* Send log message. See NOTE 8 below. */
-  dwt_writetxdata(LOG_MSG_SIZE, logMsgBuffer, 0); /* Zero offset in TX buffer. */
-  dwt_writetxfctrl(LOG_MSG_SIZE, 0, 0); /* Zero offset in TX buffer, not ranging. */
+  dwt_writetxdata(UWB_MSG_BUF_LEN, log_msg_buffer, 0); /* Zero offset in TX buffer. */
+  dwt_writetxfctrl(UWB_MSG_BUF_LEN, 0, 0); /* Zero offset in TX buffer, not ranging. */
   ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
 
   /* If dwt_starttx() returns an error, abandon this log transmission. */
