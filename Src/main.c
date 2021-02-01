@@ -1310,7 +1310,7 @@ static void printLog(char c)
         float x = coordinateFromBytes(rx_buffer, 4);
         float y = coordinateFromBytes(rx_buffer, 8);
         double r = doubleFromBytes(rx_buffer,12);
-        printf("frame no.: %d, x: %f, y: %f, r: %lf\n", ctr, x, y, r);
+        printf("frame no.: %d, x: %f, y: %f, r: %lf \n", ctr, x, y, r);
       }
       else if(c == 'a')
       {
