@@ -189,21 +189,17 @@ static dwt_config_t config_LongData_Fast = {
 static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCC, 0xDD, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
-//static uint8 tx_log_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8_t tx_log_msg[24];
+static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0}; /* Actually not needed */
+static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t rx_log_msg[24] = {'L'};
 
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb_initiator = 0;
 static uint8 frame_seq_nb_responder = 0;
-static uint8 frame_seq_nb_log = 0;
-
 	
 static uint8 rx_buffer[RX_BUF_LEN];
 
@@ -274,7 +270,6 @@ static uint32_t timeMsFromBytes(uint8_t *buffer, uint8_t offset);
 static float coordinateFromBytes(uint8_t *buffer, uint8_t offset);
 static char charFromBytes(uint8_t *buffer, uint8_t offset);
 static void doubleToBytes(uint8_t bytes[], uint8_t bytesSize, double dbl, uint8_t offset);
-static double reportMsgReadDist(void);
 
 /* USER CODE END PFP */
 
@@ -448,10 +443,14 @@ int main(void)
       
         initiator_go(numMeasure);
 
-        /* send received distance byte-wise over USART3 */
-        HAL_UART_Transmit_IT(&huart3, (uint8_t *) &distance, REPORT_MSG_LEN);
+        /* check if received report message is valid */
+        if(distance != 0)
+        {
+          /* send received distance byte-wise over USART3 */
+          HAL_UART_Transmit_IT(&huart3, (uint8_t *) &distance, REPORT_MSG_LEN);
+        }
 
-        /* enable reception of nest USART message */
+        /* enable reception of next USART message */
         HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
 
         state = SEND_LOG ;
@@ -1107,8 +1106,7 @@ static void initiator_go (uint16_t numMeasure)
 				 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
 				rx_buffer[ALL_MSG_SN_IDX] = 0;
 
-				// if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
-				if (memcmp(rx_buffer, rx_resp_msg, 5) == 0)
+				if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
 				{
 						//printf ("Reception of the expected frame, sending final msg\n");
 						uint32 final_tx_time;
@@ -1170,11 +1168,24 @@ static void initiator_go (uint16_t numMeasure)
 
                 /* A frame has been received, read it into the local buffer. */
                 frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
-                if (frame_len <= RX_BUF_LEN && (REPORT_MSG_DIST_IDX + REPORT_MSG_LEN) <= frame_len)
+                if (frame_len <= RX_BUF_LEN)
                 {
-                  uint8_t rxDistBytes[REPORT_MSG_LEN];    // allocate bytes for distance measurement
-                  dwt_readrxdata(rxDistBytes, REPORT_MSG_LEN, REPORT_MSG_DIST_IDX);  // read distance from given offset
-                  distance = doubleFromBytes(rxDistBytes,0);  // convert back to double
+                  /* read distance*/
+                  dwt_readrxdata(rx_buffer, frame_len, 0);   // read at 0 offset
+                }
+
+                /* Check that the frame is the expected response from the companion "DS TWR responder" example.
+                 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
+                rx_buffer[ALL_MSG_SN_IDX] = 0;
+
+                if (memcmp(rx_buffer, rx_report_msg, ALL_MSG_COMMON_LEN) == 0)
+                {
+                  distance = doubleFromBytes(rx_buffer, REPORT_MSG_DIST_IDX);  // convert back to double
+                }
+                else
+                {
+                  /* if report message is invalid, set distance to 0 */
+                  distance = 0;
                 }
 
             }
@@ -1205,7 +1216,6 @@ void send_log_msg(uint8_t logMsgBuffer[LOG_MSG_SIZE])
 {
   int ret;
   /* Send log message. See NOTE 8 below. */
-  //tx_log_msg[ALL_MSG_SN_IDX] = frame_seq_nb_log;
   dwt_writetxdata(LOG_MSG_SIZE, logMsgBuffer, 0); /* Zero offset in TX buffer. */
   dwt_writetxfctrl(LOG_MSG_SIZE, 0, 0); /* Zero offset in TX buffer, not ranging. */
   ret = dwt_starttx(DWT_START_TX_IMMEDIATE);
@@ -1219,9 +1229,6 @@ void send_log_msg(uint8_t logMsgBuffer[LOG_MSG_SIZE])
 
     /* Clear TXFRS event. */
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
-
-    /* Increment frame sequence number after transmission of the log message (modulo 256). */
-    //frame_seq_nb_log++;
   }
 }
 
