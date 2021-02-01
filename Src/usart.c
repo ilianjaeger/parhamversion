@@ -128,7 +128,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    if(memcmp(logMsgBuffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
+    if(logMsgBuffer[0] == 'L')
     {
       /* print message counter*/
       // uint8_t ctr = logMsgBuffer[3];
@@ -140,13 +140,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       //   HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 
       log_available = 1;
+      state = SEND_LOG;
+    }
+    else if(logMsgBuffer[0] == 'R')
+    {
+      state = INITIATOR;
     }
     else
     {
-      /* enable reception of log message */
+      /* enable reception of nest USART message */
       HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+      state = SEND_LOG;
     }
-    state = SEND_LOG;
   }
 }
 

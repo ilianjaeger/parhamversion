@@ -228,9 +228,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-// tag_FSM_state_t state = IDLE;
+tag_FSM_state_t state = IDLE;
 /* for uwb board attached to drone */
-tag_FSM_state_t state = INITIALIZE_UWB_BOARD;
+// tag_FSM_state_t state = INITIALIZE_UWB_BOARD;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -396,15 +396,18 @@ int main(void)
 			
 			case INITIATOR:
 				/* Initializing Decawave module for initiator configuration */
-				HAL_NVIC_DisableIRQ (EXTI2_IRQn);
+				// HAL_NVIC_DisableIRQ (EXTI2_IRQn);
 				//printf("INITIATOR state\n");
     
-				MX_DWM_Init (0);	
+				// MX_DWM_Init (0);	
 			
 				initiator_go(numMeasure);
 
         /* send received distance byte-wise over USART3 */
         HAL_UART_Transmit_IT(&huart3, (uint8_t *) &distance, REPORT_MSG_LEN);
+
+        /* enable reception of nest USART message */
+        HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
 
 				state = SEND_LOG ;
 				break; 
@@ -426,6 +429,7 @@ int main(void)
         MX_DWM_Init (0);  
         /* Enable USART interrupts */
         HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+
         /* Prepare for sending logs over uwb */
         state = SEND_LOG;
         break;
@@ -1007,12 +1011,11 @@ static void rx_ok_cb_log(const dwt_cb_data_t *cb_data){
     
     if(memcmp(rx_buffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
     {
-      /* enable UWB reception */
       state = PRINT_LOG;
     }
     else
     {
-      printf("Nonsense message received: \n");
+      //printf("Nonsense message received: \n");
       state = PRINT_LOG;
     }
 }
@@ -1302,7 +1305,7 @@ static void printLog(char c)
       }
       else
       {
-        printf("invalid message identifier\n");
+        // printf("invalid log message identifier\n");
       }
 
 }
