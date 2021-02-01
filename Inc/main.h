@@ -68,13 +68,13 @@ typedef enum
 /* FSM state enum */
 typedef enum
 {
-    IDLE,
+    INITIALIZE_RESPONDER,
     RECEIVE_I,
     WAIT,
     PROCESS,
     INITIATOR,
-    INITIALIZE_UWB_BOARD,
-    INITIALIZE_UWB_NODE_LOG,
+    INITIALIZE_INITIATOR,
+    INITIALIZE_LOGGER,
     SEND_LOG,
     PRINT_LOG,
 } tag_FSM_state_t;

@@ -228,9 +228,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-tag_FSM_state_t state = IDLE;
+tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-// tag_FSM_state_t state = INITIALIZE_UWB_BOARD;
+// tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -322,7 +322,7 @@ int main(void)
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
   /* set delay for uwb board attached to the drone */
-  if(state == INITIALIZE_UWB_BOARD)
+  if(state == INITIALIZE_INITIATOR)
   {
     HAL_Delay (10000);
   }
@@ -357,35 +357,57 @@ int main(void)
   
   while (1)
   {
-		/* State machine of the application, application starts in IDLE mode and configs for responder,
+		/* State machine of the application, application starts in INITIALIZE_RESPONDER mode and configs for responder,
 			then it goes to RECEIVE_I which enables RX, it then goes to WAIT state to wait for ranging to complete,
 			finally, whenever the ranging ends, the application goes to PROCESS state and sends measured distance to the host.
 			If the debug button is pressed, application goes into INITIATOR state and starts ranging for the specified number of times.*/
 		switch (state)
 		{
-			case IDLE: 
-				//printf ("IDLE state\n");
+      /* INITIALIZE RESPONDER: Initialize the UWB node that is responsible for ranging */
+			case INITIALIZE_RESPONDER: 
+
         /* Initializing Decawave module for responder configuration (responder = 1) */
         MX_DWM_Init(1);
-        /* enable uwb interrupts */
+
+        /* enable UWB interrupts */
 				HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
 				state = RECEIVE_I;
 				break;
 
+      /* INITIALIZE LOGGER: Initialize the UWB node that is responsible for receiving and printing log messages */
+      case INITIALIZE_LOGGER:
+
+        /* Initializing Decawave module for logger configuration (logger = 2) */
+        MX_DWM_Init (2);
+
+        /* enable UWB interrupts */
+        HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
+        state = RECEIVE_I;
+        break;
+
+      /* RECEIVE_I: Enable interrupt for UWB RX event */
 			case RECEIVE_I:
-				//printf("STATE RECEIVE_I\n");
+
 				HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
+
 				 /* Clear reception timeout to start next ranging process. */
 				dwt_setrxtimeout(0);
+
 				/* Activate reception immediately. */
 				dwt_rxenable(DWT_START_RX_IMMEDIATE);
+
 				state = WAIT;
 				break;
 
+      /* WAIT: Wait for interrupts */
 			case WAIT:
 				break;
 
+      /* PROCESS: calculate the distance to the ranging initiator */
 			case PROCESS:
+
 				t2 = HAL_GetTick() - t1;
 				ranges[numRanged] = distance;
 				printf("Measurement: %d, Distance: %f, Time: %li\n",numRanged,distance,(long int) t2);
@@ -394,39 +416,12 @@ int main(void)
 				state = RECEIVE_I;
 				break; 
 			
-			case INITIATOR:
-				/* Initializing Decawave module for initiator configuration */
-				// HAL_NVIC_DisableIRQ (EXTI2_IRQn);
-				//printf("INITIATOR state\n");
-    
-				// MX_DWM_Init (0);	
-			
-				initiator_go(numMeasure);
-
-        /* send received distance byte-wise over USART3 */
-        HAL_UART_Transmit_IT(&huart3, (uint8_t *) &distance, REPORT_MSG_LEN);
-
-        /* enable reception of nest USART message */
-        HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
-
-				state = SEND_LOG ;
-				break; 
-
-      case INITIALIZE_UWB_NODE_LOG:
-
-        /* Initializing Decawave module for logger configuration (logger = 2) */
-        MX_DWM_Init (2);
-
-        /* enable uwb interrupts */
-        HAL_NVIC_EnableIRQ(EXTI2_IRQn);
-        state = RECEIVE_I;
-        break;
-
-      /* INITIALIZE_UWB_BOARD: Initialization of the uwb board attached to the drone */
-      case INITIALIZE_UWB_BOARD:
+      /* INITIALIZE_INITIATOR: Initialization of the uwb board attached to the drone, starting the ranging processes */
+      case INITIALIZE_INITIATOR:
 
         /* Initializing Decawave module for initiator configuration (initiator = 0) */
-        MX_DWM_Init (0);  
+        MX_DWM_Init (0);
+
         /* Enable USART interrupts */
         HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
 
@@ -434,7 +429,7 @@ int main(void)
         state = SEND_LOG;
         break;
 
-      /* SEND_LOG: Enter this state after log msg is received over USART. Send log msg over UWB to node */
+      /* SEND_LOG: Send log msg that was received over USART over UWB to node (LOGGER) */
       case SEND_LOG:
         if(log_available)
         {
@@ -448,6 +443,21 @@ int main(void)
 
         break;
 
+      /* INITIATOR: Initiate ranging process */
+      case INITIATOR:
+      
+        initiator_go(numMeasure);
+
+        /* send received distance byte-wise over USART3 */
+        HAL_UART_Transmit_IT(&huart3, (uint8_t *) &distance, REPORT_MSG_LEN);
+
+        /* enable reception of nest USART message */
+        HAL_UART_Receive_IT(&huart3, logMsgBuffer, sizeof(logMsgBuffer));
+
+        state = SEND_LOG ;
+        break;
+
+        /* PRINT_LOG: print the log message received over UWB */
         case PRINT_LOG: ;
 
           char logMsgIdentifier = charFromBytes(rx_buffer, LOG_MSG_IDENTIFIER_IDX);
@@ -1237,7 +1247,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       }
       else if(state == WAIT)
       {
-        state = INITIALIZE_UWB_NODE_LOG;
+        state = INITIALIZE_LOGGER;
       }
     }
 }
