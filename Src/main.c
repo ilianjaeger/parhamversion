@@ -358,6 +358,8 @@ int main(void)
       /* INITIALIZE RESPONDER: Initialize the UWB node that is responsible for ranging */
 			case INITIALIZE_RESPONDER: 
 
+        printf("responder\n");
+
         /* Initializing Decawave module for responder configuration (responder = 1) */
         MX_DWM_Init(1);
 
@@ -369,6 +371,8 @@ int main(void)
 
       /* INITIALIZE LOGGER: Initialize the UWB node that is responsible for receiving and printing log messages */
       case INITIALIZE_LOGGER:
+
+        printf("logger\n");
 
         /* Initializing Decawave module for logger configuration (logger = 2) */
         MX_DWM_Init (2);
