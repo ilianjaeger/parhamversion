@@ -225,9 +225,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-// tag_FSM_state_t state = INITIALIZE_RESPONDER;
+tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-tag_FSM_state_t state = INITIALIZE_INITIATOR;
+// tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -1309,6 +1309,13 @@ static void printLog(char c)
         float y = coordinateFromBytes(rx_buffer, 8);
         double r = doubleFromBytes(rx_buffer,12);
         printf("frame no.: %d, x: %f, y: %f, r: %lf \n", ctr, x, y, r);
+      }
+      else if(c == 'c')
+      {
+        /* point logging */
+        double x = doubleFromBytes(rx_buffer, 4);
+        double y = doubleFromBytes(rx_buffer, 12);
+        printf("frame no.: %d, x: %lf, y: %lf \n", ctr, x, y);
       }
       else if(c == 'a')
       {
