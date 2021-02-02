@@ -70,8 +70,7 @@
 #define FINAL_MSG_FINAL_TX_TS_IDX 18
 #define FINAL_MSG_TS_LEN 4
 
-#define REPORT_MSG_DIST_IDX 10
-#define REPORT_MSG_LEN sizeof(double) // 8 bytes
+#define REPORT_MSG_DIST_IDX 12
 
 #define LOG_MSG_IDENTIFIER_IDX 1
 #define LOG_MSG_COUNTER_IDX 2
@@ -226,9 +225,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-tag_FSM_state_t state = INITIALIZE_RESPONDER;
+// tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-// tag_FSM_state_t state = INITIALIZE_INITIATOR;
+tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -452,7 +451,7 @@ int main(void)
         if(distance != 0)
         {
           /* send received distance byte-wise over USART3 */
-          HAL_UART_Transmit_IT(&huart3, (uint8_t *) &distance, REPORT_MSG_LEN);
+          HAL_UART_Transmit_IT(&huart3, (uint8_t *) &distance, sizeof(double));
         }
 
         /* enable reception of next USART message */
