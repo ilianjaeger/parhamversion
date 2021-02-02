@@ -318,13 +318,6 @@ int main(void)
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-  /* set delay for uwb board attached to the drone */
-  if(state == INITIALIZE_INITIATOR)
-  {
-    /* It is important that the GPIOs of the UWB board are initialized AFTER the flight controller
-    is started up. If not, a zero will be in the USART RX shift register. */
-    HAL_Delay (10000);
-  }
 
   /* USER CODE BEGIN Init */
 
@@ -416,7 +409,13 @@ int main(void)
 				break; 
 			
       /* INITIALIZE_INITIATOR: Initialization of the uwb board attached to the drone, starting the ranging processes */
-      case INITIALIZE_INITIATOR:
+      case INITIALIZE_INITIATOR: ;
+
+        /* Expect zero byte. This is a hacky workaround to the problem that the device that starts up faster receives 
+        a zero byte during the initialization of the GPIOs of the device on the other end of the USART connection (the flight controller).
+        Receive byte in blocking mode, wait for 1 minute, then continue normally*/
+        uint8_t init_byte;
+        HAL_UART_Receive(&huart3, &init_byte, sizeof(init_byte), 60000);
 
         /* Initializing Decawave module for initiator configuration (initiator = 0) */
         MX_DWM_Init (0);
