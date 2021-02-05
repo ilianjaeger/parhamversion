@@ -225,9 +225,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-// tag_FSM_state_t state = INITIALIZE_RESPONDER;
+tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-tag_FSM_state_t state = INITIALIZE_INITIATOR;
+// tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -268,6 +268,7 @@ static void rx_err_cb(const dwt_cb_data_t *);
 static void printLog(char c);
 static double doubleFromBytes(uint8_t *buffer, uint8_t offset);
 static float floatFromBytes(uint8_t *buffer, uint8_t offset);
+static uint16_t uint16FromBytes(uint8_t *buffer, uint8_t offset);
 static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset);
 static uint32_t timeMsFromBytes(uint8_t *buffer, uint8_t offset);
 static char charFromBytes(uint8_t *buffer, uint8_t offset);
@@ -1296,7 +1297,7 @@ void Error_Handler(void)
 static void printLog(char c)
 {
       /* get frame counter */
-      uint8_t ctr = uwb_rx_buffer[LOG_MSG_COUNTER_IDX];
+      uint16_t ctr = uint16FromBytes(uwb_rx_buffer, LOG_MSG_COUNTER_IDX);
 
       if(c == 'p')
       {
@@ -1307,7 +1308,7 @@ static void printLog(char c)
         float z = floatFromBytes(uwb_rx_buffer, 16);
 
         /* print: message id, frame number, x, y, z, time in ms */
-        printf("p,%d,%f,%f,%f,%li\n", ctr, x, y, z, (long int) timeMs);
+        printf("p,%u,%f,%f,%f,%li\n", ctr, x, y, z, (long int) timeMs);
       }
       else if(c == 'm')
       {
@@ -1318,7 +1319,7 @@ static void printLog(char c)
         float r = floatFromBytes(uwb_rx_buffer,16);
 
         /* print: message id, frame number, x, y, z, ranging distance */
-        printf("m,%d,%f,%f,%f,%f\n", ctr, x, y, z, r);
+        printf("m,%u,%f,%f,%f,%f\n", ctr, x, y, z, r);
       }
       else if(c == 'c')
       {
@@ -1327,7 +1328,7 @@ static void printLog(char c)
         double y = doubleFromBytes(uwb_rx_buffer, 12);
 
         /* print: message id, frame number, x, y */
-        printf("c,%d,%lf,%lf,0,0\n", ctr, x, y);
+        printf("c,%u,%lf,%lf,0,0\n", ctr, x, y);
       }
       else if(c == 'a')
       {
@@ -1371,6 +1372,13 @@ static float floatFromBytes(uint8_t *buffer, uint8_t offset)
 {
   float result;
   memcpy(&result, buffer + offset, sizeof(float));
+  return result;
+}
+
+static uint16_t uint16FromBytes(uint8_t *buffer, uint8_t offset)
+{
+  uint16_t result;
+  memcpy(&result, buffer + offset, sizeof(uint16_t));
   return result;
 }
 
