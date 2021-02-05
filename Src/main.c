@@ -202,7 +202,7 @@ static uint8 frame_seq_nb_initiator = 0;
 static uint8 frame_seq_nb_responder = 0;
 	
 /* rx buffer for received UWB messages */
-static uint8 rx_buffer[UWB_MSG_BUF_LEN];
+static uint8 uwb_rx_buffer[UWB_MSG_BUF_LEN];
 
 /* Hold copy of status register state here for reference so that it can be examined at a debug breakpoint. */
 static uint32 status_reg = 0;
@@ -225,9 +225,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-tag_FSM_state_t state = INITIALIZE_RESPONDER;
+// tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-// tag_FSM_state_t state = INITIALIZE_INITIATOR;
+tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -466,7 +466,7 @@ int main(void)
         /* PRINT_LOG: print the log message received over UWB */
         case PRINT_LOG: ;
 
-          char logMsgIdentifier = charFromBytes(rx_buffer, LOG_MSG_IDENTIFIER_IDX);
+          char logMsgIdentifier = charFromBytes(uwb_rx_buffer, LOG_MSG_IDENTIFIER_IDX);
           printLog(logMsgIdentifier);
           
           state = RECEIVE_I;
@@ -895,20 +895,20 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 			 * buffer. */
 		for (int i = 0 ; i < UWB_MSG_BUF_LEN; i++ )
 		{
-			rx_buffer[i] = 0;
+			uwb_rx_buffer[i] = 0;
 
 		}
 		
 		/* A frame has been received, read it into the local buffer. */
 		if (cb_data->datalength <= UWB_MSG_BUF_LEN)
 		{
-				dwt_readrxdata(rx_buffer, cb_data->datalength, 0);
+				dwt_readrxdata(uwb_rx_buffer, cb_data->datalength, 0);
 		}
 
 		/* Check that the frame is a first poll sent by "DS TWR initiator" example or the final message.
 		 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-		rx_buffer[ALL_MSG_SN_IDX] = 0;
-		if (memcmp(rx_buffer, rx_poll_msg, ALL_MSG_COMMON_LEN) == 0)
+		uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
+		if (memcmp(uwb_rx_buffer, rx_poll_msg, ALL_MSG_COMMON_LEN) == 0)
 		{
 			  t1 = HAL_GetTick();
 				//printf("Received the expected frame\n");
@@ -945,7 +945,7 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 
 				state = WAIT;
 		}
-		else if (memcmp(rx_buffer, rx_final_msg, ALL_MSG_COMMON_LEN) == 0)
+		else if (memcmp(uwb_rx_buffer, rx_final_msg, ALL_MSG_COMMON_LEN) == 0)
 		{
 				dwt_setleds(DWT_LEDS_ENABLE);
 				uint32 poll_tx_ts, resp_rx_ts, final_tx_ts;
@@ -959,9 +959,9 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 				final_rx_ts = get_rx_timestamp_u64();
 
 				/* Get timestamps embedded in the final message. */
-				final_msg_get_ts(&rx_buffer[FINAL_MSG_POLL_TX_TS_IDX], &poll_tx_ts);
-				final_msg_get_ts(&rx_buffer[FINAL_MSG_RESP_RX_TS_IDX], &resp_rx_ts);
-				final_msg_get_ts(&rx_buffer[FINAL_MSG_FINAL_TX_TS_IDX], &final_tx_ts);
+				final_msg_get_ts(&uwb_rx_buffer[FINAL_MSG_POLL_TX_TS_IDX], &poll_tx_ts);
+				final_msg_get_ts(&uwb_rx_buffer[FINAL_MSG_RESP_RX_TS_IDX], &resp_rx_ts);
+				final_msg_get_ts(&uwb_rx_buffer[FINAL_MSG_FINAL_TX_TS_IDX], &final_tx_ts);
 
 				/* Compute time of flight. 32-bit subtractions give correct answers even if clock has wrapped. See NOTE 12 below. */
 				poll_rx_ts_32 = (uint32)poll_rx_ts;
@@ -1015,17 +1015,17 @@ static void rx_ok_cb_log(const dwt_cb_data_t *cb_data){
        * buffer. */
     for (int i = 0 ; i < UWB_MSG_BUF_LEN; i++ )
     {
-      rx_buffer[i] = 0;
+      uwb_rx_buffer[i] = 0;
 
     }
     
     /* A frame has been received, read it into the local buffer. */
     if (cb_data->datalength <= UWB_MSG_BUF_LEN)
     {
-        dwt_readrxdata(rx_buffer, cb_data->datalength, 0);
+        dwt_readrxdata(uwb_rx_buffer, cb_data->datalength, 0);
     }
     
-    if(memcmp(rx_buffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
+    if(memcmp(uwb_rx_buffer, rx_log_msg, LOG_MSG_COMMON_LEN) == 0)
     {
       state = PRINT_LOG;
     }
@@ -1107,13 +1107,13 @@ static void initiator_go (uint16_t numMeasure)
 				frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
 				if (frame_len <= UWB_MSG_BUF_LEN)
 				{
-						dwt_readrxdata(rx_buffer, frame_len, 0);
+						dwt_readrxdata(uwb_rx_buffer, frame_len, 0);
 				}
 				/* Check that the frame is the expected response from the companion "DS TWR responder" example.
 				 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-				rx_buffer[ALL_MSG_SN_IDX] = 0;
+				uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
 
-				if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
+				if (memcmp(uwb_rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
 				{
 						//printf ("Reception of the expected frame, sending final msg\n");
 						uint32 final_tx_time;
@@ -1178,16 +1178,16 @@ static void initiator_go (uint16_t numMeasure)
                 if (frame_len <= UWB_MSG_BUF_LEN)
                 {
                   /* read distance*/
-                  dwt_readrxdata(rx_buffer, frame_len, 0);   // read at 0 offset
+                  dwt_readrxdata(uwb_rx_buffer, frame_len, 0);   // read at 0 offset
                 }
 
                 /* Check that the frame is the expected response from the companion "DS TWR responder" example.
                  * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-                rx_buffer[ALL_MSG_SN_IDX] = 0;
+                uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
 
-                if (memcmp(rx_buffer, rx_report_msg, ALL_MSG_COMMON_LEN) == 0)
+                if (memcmp(uwb_rx_buffer, rx_report_msg, ALL_MSG_COMMON_LEN) == 0)
                 {
-                  distance = doubleFromBytes(rx_buffer, REPORT_MSG_DIST_IDX);  // convert back to double
+                  distance = doubleFromBytes(uwb_rx_buffer, REPORT_MSG_DIST_IDX);  // convert back to double
                 }
                 else
                 {
@@ -1296,15 +1296,15 @@ void Error_Handler(void)
 static void printLog(char c)
 {
       /* get frame counter */
-      uint8_t ctr = rx_buffer[LOG_MSG_COUNTER_IDX];
+      uint8_t ctr = uwb_rx_buffer[LOG_MSG_COUNTER_IDX];
 
       if(c == 'p')
       {
         /* positon logging */
-        uint32_t timeMs = timeMsFromBytes(rx_buffer, 4);
-        float x = floatFromBytes(rx_buffer, 8);
-        float y = floatFromBytes(rx_buffer, 12);
-        float z = floatFromBytes(rx_buffer, 16);
+        uint32_t timeMs = timeMsFromBytes(uwb_rx_buffer, 4);
+        float x = floatFromBytes(uwb_rx_buffer, 8);
+        float y = floatFromBytes(uwb_rx_buffer, 12);
+        float z = floatFromBytes(uwb_rx_buffer, 16);
 
         /* print: message id, frame number, x, y, z, time in ms */
         printf("p,%d,%f,%f,%f,%li\n", ctr, x, y, z, (long int) timeMs);
@@ -1312,10 +1312,10 @@ static void printLog(char c)
       else if(c == 'm')
       {
         /* measurements logging */
-        float x = floatFromBytes(rx_buffer, 4);
-        float y = floatFromBytes(rx_buffer, 8);
-        float z = floatFromBytes(rx_buffer, 12);
-        float r = floatFromBytes(rx_buffer,16);
+        float x = floatFromBytes(uwb_rx_buffer, 4);
+        float y = floatFromBytes(uwb_rx_buffer, 8);
+        float z = floatFromBytes(uwb_rx_buffer, 12);
+        float r = floatFromBytes(uwb_rx_buffer,16);
 
         /* print: message id, frame number, x, y, z, ranging distance */
         printf("m,%d,%f,%f,%f,%f\n", ctr, x, y, z, r);
@@ -1323,8 +1323,8 @@ static void printLog(char c)
       else if(c == 'c')
       {
         /* point logging */
-        double x = doubleFromBytes(rx_buffer, 4);
-        double y = doubleFromBytes(rx_buffer, 12);
+        double x = doubleFromBytes(uwb_rx_buffer, 4);
+        double y = doubleFromBytes(uwb_rx_buffer, 12);
 
         /* print: message id, frame number, x, y */
         printf("c,%d,%lf,%lf,0,0\n", ctr, x, y);
@@ -1333,9 +1333,9 @@ static void printLog(char c)
       {
         uint8_t t1;
         t1 = (uint8_t) HAL_GetTick();
-        for(int i=0; i<sizeof(rx_buffer);i++)
+        for(int i=0; i<sizeof(uwb_rx_buffer);i++)
         {
-          printf("%d, ", rx_buffer[i]);
+          printf("%d, ", uwb_rx_buffer[i]);
         }
         uint8_t delta = (uint8_t) (HAL_GetTick()) - t1;
         printf(" time %d, ", delta);
