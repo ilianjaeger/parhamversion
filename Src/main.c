@@ -267,9 +267,9 @@ static void rx_err_cb(const dwt_cb_data_t *);
 
 static void printLog(char c);
 static double doubleFromBytes(uint8_t *buffer, uint8_t offset);
+static float floatFromBytes(uint8_t *buffer, uint8_t offset);
 static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset);
 static uint32_t timeMsFromBytes(uint8_t *buffer, uint8_t offset);
-static float coordinateFromBytes(uint8_t *buffer, uint8_t offset);
 static char charFromBytes(uint8_t *buffer, uint8_t offset);
 static void doubleToBytes(uint8_t bytes[], uint8_t bytesSize, double dbl, uint8_t offset);
 
@@ -1302,24 +1302,32 @@ static void printLog(char c)
       {
         /* positon logging */
         uint32_t timeMs = timeMsFromBytes(rx_buffer, 4);
-        float x = coordinateFromBytes(rx_buffer, 8);
-        float y = coordinateFromBytes(rx_buffer, 12);
-        printf("frame no.: %d, time: %li, x: %f, y: %f \n", ctr, (long int) timeMs, x, y);
+        float x = floatFromBytes(rx_buffer, 8);
+        float y = floatFromBytes(rx_buffer, 12);
+        float z = floatFromBytes(rx_buffer, 16);
+
+        /* print: message id, frame number, x, y, z, time in ms */
+        printf("p,%d,%f,%f,%f,%li\n", ctr, x, y, z, (long int) timeMs);
       }
       else if(c == 'm')
       {
         /* measurements logging */
-        float x = coordinateFromBytes(rx_buffer, 4);
-        float y = coordinateFromBytes(rx_buffer, 8);
-        double r = doubleFromBytes(rx_buffer,12);
-        printf("frame no.: %d, x: %f, y: %f, r: %lf \n", ctr, x, y, r);
+        float x = floatFromBytes(rx_buffer, 4);
+        float y = floatFromBytes(rx_buffer, 8);
+        float z = floatFromBytes(rx_buffer, 12);
+        float r = floatFromBytes(rx_buffer,16);
+
+        /* print: message id, frame number, x, y, z, ranging distance */
+        printf("m,%d,%f,%f,%f,%f\n", ctr, x, y, z, r);
       }
       else if(c == 'c')
       {
         /* point logging */
         double x = doubleFromBytes(rx_buffer, 4);
         double y = doubleFromBytes(rx_buffer, 12);
-        printf("frame no.: %d, x: %lf, y: %lf \n", ctr, x, y);
+
+        /* print: message id, frame number, x, y */
+        printf("c,%d,%lf,%lf,0,0\n", ctr, x, y);
       }
       else if(c == 'a')
       {
@@ -1359,6 +1367,13 @@ static double doubleFromBytes(uint8_t *buffer, uint8_t offset)
     return result;
 }
 
+static float floatFromBytes(uint8_t *buffer, uint8_t offset)
+{
+  float result;
+  memcpy(&result, buffer + offset, sizeof(float));
+  return result;
+}
+
 static uint64_t timeUsFromBytes(uint8_t *buffer, uint8_t offset)
 {
   uint64_t timeUs;
@@ -1371,13 +1386,6 @@ static uint32_t timeMsFromBytes(uint8_t *buffer, uint8_t offset)
   uint32_t timeMs;
   memcpy(&timeMs, buffer + offset, sizeof(uint32_t));
   return timeMs;
-}
-
-static float coordinateFromBytes(uint8_t *buffer, uint8_t offset)
-{
-  float coordinate;
-  memcpy(&coordinate, buffer + offset, sizeof(float));
-  return coordinate;
 }
 
 static char charFromBytes(uint8_t *buffer, uint8_t offset)
