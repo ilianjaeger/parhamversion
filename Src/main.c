@@ -225,9 +225,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-tag_FSM_state_t state = INITIALIZE_RESPONDER;
+// tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-// tag_FSM_state_t state = INITIALIZE_INITIATOR;
+tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -418,9 +418,18 @@ int main(void)
 
         /* Expect zero byte. This is a hacky workaround to the problem that the device that starts up faster receives 
         a zero byte during the initialization of the GPIOs of the device on the other end of the USART connection (the flight controller).
-        Receive byte in blocking mode, wait for 1 minute, then continue normally*/
+        Receive byte in blocking mode, wait for 10 seconds, then continue normally*/
         uint8_t init_byte;
-        HAL_UART_Receive(&huart3, &init_byte, sizeof(init_byte), 60000);
+        HAL_UART_Receive(&huart3, &init_byte, sizeof(init_byte), 10000);
+
+        /* Blink twice */
+        HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
+        HAL_Delay(100);
+        HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
+        HAL_Delay(100);
+        HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
+        HAL_Delay(100);
+        HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 
         /* Initializing Decawave module for initiator configuration (initiator = 0) */
         MX_DWM_Init (0);
