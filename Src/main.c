@@ -54,7 +54,7 @@
 #define RANGE_BUF_SIZE 2000
 
 /* Number of Measurements to perform in each run */
-#define NUM_MEASUREMENTS 1
+#define NUM_MEASUREMENTS 5
 
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
 #define TX_ANT_DLY 16436
@@ -225,9 +225,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-// tag_FSM_state_t state = INITIALIZE_RESPONDER;
+tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-tag_FSM_state_t state = INITIALIZE_INITIATOR;
+// tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -257,6 +257,8 @@ uint64_t getTxTimestamp(void);
 static void MX_DWM_Init(volatile uint8_t type);
 static void initiator_go (uint16_t numMeasure);
 static void send_log_msg(uint8_t log_msg_buffer[UWB_MSG_BUF_LEN]);
+static void send_report_msg(double distance);
+static double process_measurements(double ranges[numMeasure]);
 static void final_msg_get_ts(const uint8 *ts_field, uint32 *ts);
 static void final_msg_set_ts(uint8 *ts_field, uint64 ts);
 static void tx_conf_cb(const dwt_cb_data_t *);
@@ -410,6 +412,20 @@ int main(void)
 				printf("Measurement: %d, Distance: %f, Time: %li\n",numRanged,distance,(long int) t2);
 				numRanged++;
 
+        /* process and report ranging measurements to initiator */
+        if(numRanged == numMeasure)
+        {
+          double mean_distance = 0;
+          mean_distance = process_measurements(ranges);
+          send_report_msg(mean_distance);
+          /* clean ranges array */
+          for(int i = 0; i<numMeasure; i++)
+          {
+            ranges[i] = 0;
+          }
+          numRanged=0;
+        }
+
 				state = RECEIVE_I;
 				break; 
 			
@@ -420,7 +436,8 @@ int main(void)
         a zero byte during the initialization of the GPIOs of the device on the other end of the USART connection (the flight controller).
         Receive byte in blocking mode, wait for 10 seconds, then continue normally*/
         uint8_t init_byte;
-        HAL_UART_Receive(&huart3, &init_byte, sizeof(init_byte), 10000);
+        // testing
+        //HAL_UART_Receive(&huart3, &init_byte, sizeof(init_byte), 10000);
 
         /* Blink twice */
         HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
@@ -962,7 +979,6 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 				uint32 poll_rx_ts_32, resp_tx_ts_32, final_rx_ts_32;
 				double Ra, Rb, Da, Db;
 				int64 tof_dtu;
-        int ret;
 
 				/* Retrieve response transmission and final reception timestamps. */
 				resp_tx_ts = get_tx_timestamp_u64();
@@ -989,19 +1005,6 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 				/* Display computed distance on LCD. */
 				//printf("Dist: %1.2f\n",distance);
 				
-        /* Write and send the report message.*/
-        tx_report_msg[ALL_MSG_SN_IDX] = frame_seq_nb_responder;
-        // add distance to message
-        doubleToBytes(tx_report_msg, sizeof(tx_report_msg), distance, REPORT_MSG_DIST_IDX);
-        dwt_writetxdata(sizeof(tx_report_msg), tx_report_msg, 0); /* Zero offset in TX buffer. */
-        dwt_writetxfctrl(sizeof(tx_report_msg), 0, 0); /* Zero offset in TX buffer, no ranging. */
-        ret = dwt_starttx(DWT_START_TX_IMMEDIATE); /* No response expected*/
-
-        /* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 11 below. */
-        if (ret == DWT_ERROR)
-        {
-            //printf("Sending Error\n");
-        }
         //printf("Response sent, waiting for final reception\n");
         
         /* Increment frame sequence number after transmission of the response message (modulo 256). */
@@ -1167,45 +1170,6 @@ static void initiator_go (uint16_t numMeasure)
 								/* Increment frame sequence number after transmission of the final message (modulo 256). */
 								frame_seq_nb_initiator++;
 						}
-
-            /*************** Receive report message ******************************************************/
-
-              /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 9 below. */
-            while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
-            { };
-                        
-            //printf ("Transmition started and waited for a reception or timeout\n");
-            if (status_reg & SYS_STATUS_RXFCG)
-            {
-                //printf ("Reception of a frame\n");
-                uint32 frame_len;
-
-                /* Clear good RX frame event and TX frame sent in the DW1000 status register. */
-                dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
-
-                /* A frame has been received, read it into the local buffer. */
-                frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
-                if (frame_len <= UWB_MSG_BUF_LEN)
-                {
-                  /* read distance*/
-                  dwt_readrxdata(uwb_rx_buffer, frame_len, 0);   // read at 0 offset
-                }
-
-                /* Check that the frame is the expected response from the companion "DS TWR responder" example.
-                 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-                uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
-
-                if (memcmp(uwb_rx_buffer, rx_report_msg, ALL_MSG_COMMON_LEN) == 0)
-                {
-                  distance = doubleFromBytes(uwb_rx_buffer, REPORT_MSG_DIST_IDX);  // convert back to double
-                }
-                else
-                {
-                  /* if report message is invalid, set distance to 0 */
-                  distance = 0;
-                }
-
-            }
 				}
 		}
 		else
@@ -1223,6 +1187,43 @@ static void initiator_go (uint16_t numMeasure)
 		HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 		while(TIM2->CNT - t1 < RNG_DELAY_MS*100);
 	}
+  /* receive report message */
+  /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 9 below. */
+  while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
+  { };
+                        
+  //printf ("Transmition started and waited for a reception or timeout\n");
+  if (status_reg & SYS_STATUS_RXFCG)
+  {
+    //printf ("Reception of a frame\n");
+    uint32 frame_len;
+
+    /* Clear good RX frame event and TX frame sent in the DW1000 status register. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
+
+    /* A frame has been received, read it into the local buffer. */
+    frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
+    if (frame_len <= UWB_MSG_BUF_LEN)
+    {
+      /* read distance*/
+      dwt_readrxdata(uwb_rx_buffer, frame_len, 0);   // read at 0 offset
+    }
+    /* Check that the frame is the expected response from the companion "DS TWR responder" example.
+     * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
+    uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
+
+    if (memcmp(uwb_rx_buffer, rx_report_msg, ALL_MSG_COMMON_LEN) == 0)
+    {
+      distance = doubleFromBytes(uwb_rx_buffer, REPORT_MSG_DIST_IDX);  // convert back to double
+    }
+    else
+    {
+      /* if report message is invalid, set distance to 0 */
+      distance = 0;
+    }
+    // testing
+    printf("%lf\n", distance);
+  }
 }
 
 /* @fn      send_log_msg
@@ -1247,6 +1248,40 @@ void send_log_msg(uint8_t log_msg_buffer[UWB_MSG_BUF_LEN])
     /* Clear TXFRS event. */
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
   }
+}
+
+/* @fn      send_report_msg
+ * @brief   send report message over UWB
+ *          
+ * */
+void send_report_msg(double distance)
+{
+  /* Write and send the report message.*/
+  tx_report_msg[ALL_MSG_SN_IDX] = frame_seq_nb_responder;
+
+  /* create report to message */
+  int ret;
+  doubleToBytes(tx_report_msg, sizeof(tx_report_msg), distance, REPORT_MSG_DIST_IDX);
+  dwt_writetxdata(sizeof(tx_report_msg), tx_report_msg, 0); /* Zero offset in TX buffer. */
+  dwt_writetxfctrl(sizeof(tx_report_msg), 0, 0); /* Zero offset in TX buffer, no ranging. */
+  ret = dwt_starttx(DWT_START_TX_IMMEDIATE); /* No response expected*/
+
+  /* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 11 below. */
+  if (ret == DWT_ERROR)
+  {
+      //printf("Sending Error\n");
+  }
+}
+
+double process_measurements(double ranges[numMeasure])
+{
+  double mean = 0;
+  for(int i = 0; i < numMeasure; i++)
+  {
+    mean += ranges[i];
+  }
+  mean = mean/(double)numMeasure;
+  return mean;
 }
 
 /* @fn      HAL_GPIO_EXTI_Callback
