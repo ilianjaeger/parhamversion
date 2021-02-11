@@ -409,21 +409,15 @@ int main(void)
 
 				t2 = HAL_GetTick() - t1;
 				ranges[numRanged] = distance;
-				printf("Measurement: %d, Distance: %f, Time: %li\n",numRanged,distance,(long int) t2);
+        printf("Measurement: %d, Distance: %f, Time: %li\n",numRanged,distance,(long int) t2);
 				numRanged++;
 
         /* process and report ranging measurements to initiator */
-        if(numRanged == numMeasure)
+        if(numRanged % numMeasure == 0) // im numMeasure times has been ranged, report to initiator
         {
           double mean_distance = 0;
           mean_distance = process_measurements(ranges);
           send_report_msg(mean_distance);
-          /* clean ranges array */
-          for(int i = 0; i<numMeasure; i++)
-          {
-            ranges[i] = 0;
-          }
-          numRanged=0;
         }
 
 				state = RECEIVE_I;
@@ -1152,7 +1146,7 @@ static void initiator_go (uint16_t numMeasure)
 						tx_final_msg[ALL_MSG_SN_IDX] = frame_seq_nb_initiator;
 						dwt_writetxdata(sizeof(tx_final_msg), tx_final_msg, 0); /* Zero offset in TX buffer. */
 						dwt_writetxfctrl(sizeof(tx_final_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
-            
+
             if(numDone == numMeasure-1) // after last ranging expect report message
             {
               ret = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);  /* Expect report message containing calculated mean of distance */
