@@ -225,9 +225,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-tag_FSM_state_t state = INITIALIZE_RESPONDER;
+// tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-// tag_FSM_state_t state = INITIALIZE_INITIATOR;
+tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -1126,7 +1126,7 @@ static void initiator_go (uint16_t numMeasure)
 				 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
 				uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
 
-				if (memcmp(uwb_rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
+				if (memcmp(uwb_rx_buffer, rx_resp_msg, 5) == 0)
 				{
 						//printf ("Reception of the expected frame, sending final msg\n");
 						uint32 final_tx_time;
@@ -1152,7 +1152,15 @@ static void initiator_go (uint16_t numMeasure)
 						tx_final_msg[ALL_MSG_SN_IDX] = frame_seq_nb_initiator;
 						dwt_writetxdata(sizeof(tx_final_msg), tx_final_msg, 0); /* Zero offset in TX buffer. */
 						dwt_writetxfctrl(sizeof(tx_final_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
-						ret = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);  /* Expect report message containing calculated distance */
+            
+            if(numDone == numMeasure-1) // after last ranging expect report message
+            {
+              ret = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);  /* Expect report message containing calculated mean of distance */
+            }
+            else
+            {
+              ret = dwt_starttx(DWT_START_TX_DELAYED);
+            }
 
 						/* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 12 below. */
 						if (ret == DWT_SUCCESS)
