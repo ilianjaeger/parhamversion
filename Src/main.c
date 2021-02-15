@@ -54,7 +54,7 @@
 #define RANGE_BUF_SIZE 2000
 
 /* Number of Measurements to perform in each run */
-#define NUM_MEASUREMENTS 5
+#define NUM_MEASUREMENTS 80
 
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
 #define TX_ANT_DLY 16436
@@ -200,6 +200,8 @@ uint8_t rx_log_msg[24] = {'L'};
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb_initiator = 0;
 static uint8 frame_seq_nb_responder = 0;
+static uint32_t frame_seq_nb_rx_message = 0;
+static uint8_t seq_nb_overflow_ctr = 0;
 	
 /* rx buffer for received UWB messages */
 static uint8 uwb_rx_buffer[UWB_MSG_BUF_LEN];
@@ -225,15 +227,15 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-// tag_FSM_state_t state = INITIALIZE_RESPONDER;
+tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-tag_FSM_state_t state = INITIALIZE_INITIATOR;
+// tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
 
 /* Buffer to save ranging distances */
-uint16_t numRanged = 0;
+uint32_t numRanged = 0;
 double ranges[RANGE_BUF_SIZE];
 
 
@@ -408,16 +410,20 @@ int main(void)
 			case PROCESS:
 
 				t2 = HAL_GetTick() - t1;
-				ranges[numRanged] = distance;
-        printf("Measurement: %d, Distance: %f, Time: %li\n",numRanged,distance,(long int) t2);
-				numRanged++;
+        numRanged = (frame_seq_nb_rx_message - 1)/2;
+        ranges[numRanged] = distance;
+        printf("Measurement: %lu, Distance: %f, Time: %li\n",numRanged,distance,(long int) t2);
 
         /* process and report ranging measurements to initiator */
-        if(numRanged % numMeasure == 0) // im numMeasure times has been ranged, report to initiator
+        printf("numRanged+1:%lu, numMeasure:%u, modulo: %lu\n", numRanged+1, numMeasure, (numRanged+1)%numMeasure);
+        if((numRanged+1) % numMeasure == 0) // im numMeasure times has been ranged, report to initiator
         {
+          printf("send report\n");
           double mean_distance = 0;
           mean_distance = process_measurements(ranges);
+          printf("reported mean: %f\n",mean_distance);
           send_report_msg(mean_distance);
+          printf("report sent\n");
         }
 
 				state = RECEIVE_I;
@@ -430,8 +436,7 @@ int main(void)
         a zero byte during the initialization of the GPIOs of the device on the other end of the USART connection (the flight controller).
         Receive byte in blocking mode, wait for 10 seconds, then continue normally*/
         uint8_t init_byte;
-        // testing
-        //HAL_UART_Receive(&huart3, &init_byte, sizeof(init_byte), 10000);
+        HAL_UART_Receive(&huart3, &init_byte, sizeof(init_byte), 10000);
 
         /* Blink twice */
         HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_SET);
@@ -926,9 +931,16 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 				dwt_readrxdata(uwb_rx_buffer, cb_data->datalength, 0);
 		}
 
-		/* Check that the frame is a first poll sent by "DS TWR initiator" example or the final message.
-		 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-		uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
+    /* Store the frame sequence number */
+    uint8_t sn = uwb_rx_buffer[ALL_MSG_SN_IDX];
+		frame_seq_nb_rx_message = seq_nb_overflow_ctr * (uint16_t) 256 + sn;  // offset because counter goes only up to 128 *twice per ranging process)
+    if(sn == (uint8_t) 255)
+    {
+      seq_nb_overflow_ctr += 1;
+    }
+    /* Clear the sequence number field to simplify the validation of the frame. */
+    uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
+    /* Check that the frame is a first poll sent by "DS TWR initiator" example or the final message. */
 		if (memcmp(uwb_rx_buffer, rx_poll_msg, ALL_MSG_COMMON_LEN) == 0)
 		{
 			  t1 = HAL_GetTick();
