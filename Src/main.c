@@ -198,10 +198,11 @@ static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0
 uint8_t rx_log_msg[24] = {'L'};
 
 /* Frame sequence number, incremented after each transmission. */
-static uint8 frame_seq_nb_initiator = 0;
-static uint8 frame_seq_nb_responder = 0;
-static uint32_t frame_seq_nb_rx_message = 0;
-static uint8_t seq_nb_overflow_ctr = 0;
+static uint8 frame_seq_nb_initiator = 0;      /* this nubmer is sent by the initiator in each ranging message */
+static uint8 frame_seq_nb_responder = 0;      /* this number is sent by the responder in each ranging message */
+static uint32_t frame_seq_nb_rx_message = 0;  /* this variable is used to store the received sequence number in a ranging message */
+static uint8_t seq_nb_overflow_ctr = 0;       /* this vatriable as well as frame_seq_nb_rx_message count the number of successfully completed ranging measurements */
+static uint32_t frame_seq_nb_per_msmt = 0;    /* this variable counts the number of successfully completed measurements PER RANGING, is thus < NUM_MEASUREMENTS*/
 	
 /* rx buffer for received UWB messages */
 static uint8 uwb_rx_buffer[UWB_MSG_BUF_LEN];
@@ -410,20 +411,24 @@ int main(void)
 			case PROCESS:
 
 				t2 = HAL_GetTick() - t1;
-        numRanged = (frame_seq_nb_rx_message - 1)/2;
+        numRanged = (frame_seq_nb_rx_message - 1)/2; // calculate the number of received ranging msmt from the message counter
         ranges[numRanged] = distance;
-        printf("Measurement: %lu, Distance: %f, Time: %li\n",numRanged,distance,(long int) t2);
+        
+        /* print in human readable format */
+        //printf("Measurement: %lu, Distance: %f, Time: %li\n",numRanged,distance,(long int) t2);
+        
+        /* print in log file format */
+        printf("%lu,%lu,%f,%li,0,0\n", numRanged, frame_seq_nb_per_msmt, distance, (long int) HAL_GetTick());
+
+        frame_seq_nb_per_msmt++; // a new ranging measurement has been successfully completed
 
         /* process and report ranging measurements to initiator */
-        printf("numRanged+1:%lu, numMeasure:%u, modulo: %lu\n", numRanged+1, numMeasure, (numRanged+1)%numMeasure);
         if((numRanged+1) % numMeasure == 0) // im numMeasure times has been ranged, report to initiator
         {
-          printf("send report\n");
           double mean_distance = 0;
           mean_distance = process_measurements(ranges);
-          printf("reported mean: %f\n",mean_distance);
           send_report_msg(mean_distance);
-          printf("report sent\n");
+          frame_seq_nb_per_msmt = 0; // the ranging measurement is over, reset for next ranging
         }
 
 				state = RECEIVE_I;
