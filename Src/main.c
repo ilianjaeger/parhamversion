@@ -54,7 +54,7 @@
 #define RANGE_BUF_SIZE 2000
 
 /* Number of Measurements to perform in each run */
-#define NUM_MEASUREMENTS 80
+#define NUM_MEASUREMENTS 20
 
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
 #define TX_ANT_DLY 16436
@@ -227,9 +227,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-tag_FSM_state_t state = INITIALIZE_RESPONDER;
+// tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-// tag_FSM_state_t state = INITIALIZE_INITIATOR;
+tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -1161,31 +1161,40 @@ static void initiator_go (uint16_t numMeasure)
 						dwt_writetxdata(sizeof(tx_final_msg), tx_final_msg, 0); /* Zero offset in TX buffer. */
 						dwt_writetxfctrl(sizeof(tx_final_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
 
-            if(numDone == numMeasure-1) // after last ranging expect report message
+            if(numDone == numMeasure-1) /* if last ranging measurement */
             {
               ret = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);  /* Expect report message containing calculated mean of distance */
+              if (ret == DWT_SUCCESS)
+              {
+                /* Poll for reception of a frame or error/timeout. */
+                while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
+                { };
+                if(status_reg & SYS_STATUS_RXFCG) /* if report message received */
+                {
+                  /* Clear good RX frame event and TX frame sent in the DW1000 status register. */
+                  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
+                }
+                else /* if report message not received */
+                {
+                  /* Clear RX error/timeout events in the DW1000 status register. */
+                  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
+                }
+              }
             }
-            else
+            else /* if not the last ranging measurement */
             {
               ret = dwt_starttx(DWT_START_TX_DELAYED);
+              if(ret == DWT_SUCCESS)
+              {
+                /* Poll DW1000 until TX frame sent event set. */
+                while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
+                { };
+                /* Clear TXFRS event. */
+                dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+              }
             }
-
-						/* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 12 below. */
-						if (ret == DWT_SUCCESS)
-						{
-								//printf ("Final msg sent correct # %d\n",numDone);
-                //printf("%d\n", (int)final_tx_ts);
-                //printf("%d\n", (int)final_tx_time);
-								/* Poll DW1000 until TX frame sent event set. See NOTE 9 below. */
-								while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
-								{ };
-
-								/* Clear TXFRS event. */
-								dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
-
 								/* Increment frame sequence number after transmission of the final message (modulo 256). */
 								frame_seq_nb_initiator++;
-						}
 				}
 		}
 		else
