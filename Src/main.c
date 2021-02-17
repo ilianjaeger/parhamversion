@@ -48,7 +48,7 @@
 
 /************************************************ DECAWAVE *******************************/
 /* Inter-ranging delay period, in milliseconds. */
-#define RNG_DELAY_MS 500
+#define RNG_DELAY_MS 100
 
 /* Buffer size to hold ranging measurements */
 #define RANGE_BUF_SIZE 2000
