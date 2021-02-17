@@ -189,13 +189,14 @@ static dwt_config_t config_LongData_Fast = {
 static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 tx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8 rx_report_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2A, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t rx_log_msg[24] = {'L'};
+static uint8 ack_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2B, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb_initiator = 0;      /* this nubmer is sent by the initiator in each ranging message */
@@ -227,9 +228,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-// tag_FSM_state_t state = INITIALIZE_RESPONDER;
+tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-tag_FSM_state_t state = INITIALIZE_INITIATOR;
+// tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -259,6 +260,7 @@ uint64_t getTxTimestamp(void);
 static void MX_DWM_Init(volatile uint8_t type);
 static void initiator_go (uint16_t numMeasure);
 static void send_log_msg(uint8_t log_msg_buffer[UWB_MSG_BUF_LEN]);
+static void send_ack(void);
 static void send_report_msg(double distance);
 static double process_measurements(double ranges[numMeasure]);
 static void final_msg_get_ts(const uint8 *ts_field, uint32 *ts);
@@ -426,6 +428,10 @@ int main(void)
           double mean_distance = 0;
           mean_distance = process_measurements(ranges);
           send_report_msg(mean_distance);
+        }
+        else
+        {
+          send_ack();
         }
 
 				state = RECEIVE_I;
@@ -1161,48 +1167,54 @@ static void initiator_go (uint16_t numMeasure)
 						dwt_writetxdata(sizeof(tx_final_msg), tx_final_msg, 0); /* Zero offset in TX buffer. */
 						dwt_writetxfctrl(sizeof(tx_final_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
 
-            if(numDone == numMeasure-1) /* if last ranging measurement */
+            ret = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);  /* Expect report or ack message */
+            if (ret == DWT_SUCCESS)
             {
-              ret = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);  /* Expect report message containing calculated mean of distance */
-              if (ret == DWT_SUCCESS)
+              /* Poll for reception of a frame or error/timeout. */
+              while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
+              { };
+              if(status_reg & SYS_STATUS_RXFCG) /* if report/ack message received */
               {
-                /* Poll for reception of a frame or error/timeout. */
-                while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
-                { };
-                if(status_reg & SYS_STATUS_RXFCG) /* if report message received */
+                /* Clear good RX frame event and TX frame sent in the DW1000 status register. */
+                dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
+
+                /* Handle report/ack message */
+                uint32 frame_len;
+                /* A frame has been received, load it into the local buffer. */
+                frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
+                if (frame_len <= UWB_MSG_BUF_LEN)
                 {
-                  /* Clear good RX frame event and TX frame sent in the DW1000 status register. */
-                  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
+                  dwt_readrxdata(uwb_rx_buffer, frame_len, 0);   // read at 0 offset
                 }
-                else /* if report message not received */
+                uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
+                /* check if answer is report message */
+                if (memcmp(uwb_rx_buffer, rx_report_msg, ALL_MSG_COMMON_LEN) == 0)
                 {
-                  /* Clear RX error/timeout events in the DW1000 status register. */
-                  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
+                  distance = doubleFromBytes(uwb_rx_buffer, REPORT_MSG_DIST_IDX);
+                }
+                /* check if answer is ack */
+                else if (memcmp(uwb_rx_buffer, ack_msg, ALL_MSG_COMMON_LEN) == 0)
+                {
+                  distance = 0;
                 }
               }
-            }
-            else /* if not the last ranging measurement */
-            {
-              ret = dwt_starttx(DWT_START_TX_DELAYED);
-              if(ret == DWT_SUCCESS)
+              else /* if no report/ack message received */
               {
-                /* Poll DW1000 until TX frame sent event set. */
-                while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
-                { };
-                /* Clear TXFRS event. */
-                dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+                /* Clear RX error/timeout events in the DW1000 status register. */
+                dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
+                /* Reset RX to properly reinitialise LDE operation. */
+                dwt_rxreset();
               }
             }
-								/* Increment frame sequence number after transmission of the final message (modulo 256). */
-								frame_seq_nb_initiator++;
+						/* Increment frame sequence number after transmission of the final message (modulo 256). */
+						frame_seq_nb_initiator++;
 				}
 		}
-		else
+		else /* No response message received */
 		{
 				//printf ("Not receiving a frame and timeout. Cause:%lx\n",status_reg);
 				/* Clear RX error/timeout events in the DW1000 status register. */
 				dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
-
 				/* Reset RX to properly reinitialise LDE operation. */
 				dwt_rxreset();
 		}
@@ -1212,43 +1224,6 @@ static void initiator_go (uint16_t numMeasure)
 		HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 		while(TIM2->CNT - t1 < RNG_DELAY_MS*100);
 	}
-  /* receive report message */
-  /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 9 below. */
-  while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
-  { };
-                        
-  //printf ("Transmition started and waited for a reception or timeout\n");
-  if (status_reg & SYS_STATUS_RXFCG)
-  {
-    //printf ("Reception of a frame\n");
-    uint32 frame_len;
-
-    /* Clear good RX frame event and TX frame sent in the DW1000 status register. */
-    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
-
-    /* A frame has been received, read it into the local buffer. */
-    frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
-    if (frame_len <= UWB_MSG_BUF_LEN)
-    {
-      /* read distance*/
-      dwt_readrxdata(uwb_rx_buffer, frame_len, 0);   // read at 0 offset
-    }
-    /* Check that the frame is the expected response from the companion "DS TWR responder" example.
-     * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-    uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
-
-    if (memcmp(uwb_rx_buffer, rx_report_msg, ALL_MSG_COMMON_LEN) == 0)
-    {
-      distance = doubleFromBytes(uwb_rx_buffer, REPORT_MSG_DIST_IDX);  // convert back to double
-    }
-    else
-    {
-      /* if report message is invalid, set distance to 0 */
-      distance = 0;
-    }
-    // testing
-    printf("%lf\n", distance);
-  }
 }
 
 /* @fn      send_log_msg
@@ -1272,6 +1247,28 @@ void send_log_msg(uint8_t log_msg_buffer[UWB_MSG_BUF_LEN])
 
     /* Clear TXFRS event. */
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+  }
+}
+
+/* @fn      send_ack
+ * @brief   send acknowledgement message over UWB
+ *          
+ * */
+void send_ack(void)
+{
+  /* Write and send the report message.*/
+  tx_report_msg[ALL_MSG_SN_IDX] = frame_seq_nb_responder;
+
+  /* create ack message */
+  int ret;
+  dwt_writetxdata(sizeof(ack_msg), ack_msg, 0); /* Zero offset in TX buffer. */
+  dwt_writetxfctrl(sizeof(ack_msg), 0, 0); /* Zero offset in TX buffer, no ranging. */
+  ret = dwt_starttx(DWT_START_TX_IMMEDIATE); /* No response expected*/
+
+  /* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 11 below. */
+  if (ret == DWT_ERROR)
+  {
+      //printf("Sending Error\n");
   }
 }
 
