@@ -1134,7 +1134,7 @@ static void initiator_go (uint16_t numMeasure)
 				 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
 				uwb_rx_buffer[ALL_MSG_SN_IDX] = 0;
 
-				if (memcmp(uwb_rx_buffer, rx_resp_msg, 5) == 0)
+				if (memcmp(uwb_rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
 				{
 						//printf ("Reception of the expected frame, sending final msg\n");
 						uint32 final_tx_time;
