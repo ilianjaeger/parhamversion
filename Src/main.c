@@ -54,7 +54,7 @@
 #define RANGE_BUF_SIZE 2000
 
 /* Number of Measurements to perform in each run */
-#define NUM_MEASUREMENTS 20
+#define NUM_MEASUREMENTS 100
 
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
 #define TX_ANT_DLY 16436
@@ -200,6 +200,7 @@ static uint8 ack_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x2B, 0
 
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb_initiator = 0;      /* this nubmer is sent by the initiator in each ranging message */
+static uint32_t frame_seq_nb_initiator_long = 0; /* this number is the same as the uint8 one, but without overflow */
 static uint8 frame_seq_nb_responder = 0;      /* this number is sent by the responder in each ranging message */
 static uint32_t frame_seq_nb_rx_message = 0;  /* this variable is used to store the received sequence number in a ranging message */
 static uint32_t seq_nb_overflow_ctr = 0;       /* this vatriable as well as frame_seq_nb_rx_message count the number of successfully completed ranging measurements */
@@ -228,9 +229,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-tag_FSM_state_t state = INITIALIZE_RESPONDER;
+// tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-// tag_FSM_state_t state = INITIALIZE_INITIATOR;
+tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -985,7 +986,7 @@ static void rx_ok_cb(const dwt_cb_data_t *cb_data){
 		else if (memcmp(uwb_rx_buffer, rx_final_msg, ALL_MSG_COMMON_LEN) == 0)
 		{
       /* process received frame number */
-  		frame_seq_nb_rx_message = seq_nb_overflow_ctr * (uint32_t) 256 + sn;  // offset because counter goes only up to 128 *twice per ranging process)
+  		frame_seq_nb_rx_message = seq_nb_overflow_ctr * (uint32_t) 256 + sn;  // offset because counter goes only up to 255
       if(sn == (uint8_t) 255)
       {
         seq_nb_overflow_ctr += 1;
@@ -1196,7 +1197,8 @@ static void initiator_go (uint16_t numMeasure)
                 {
                   distance = 0;
                 }
-                frame_seq_nb_initiator++; /* only count up if ranging process has been successfully finished */
+                frame_seq_nb_initiator_long++; /* only count up if ranging process has been successfully finished */
+                frame_seq_nb_initiator = (uint8_t) frame_seq_nb_initiator_long;
               }
               else /* if no report/ack message received */
               {
@@ -1224,7 +1226,7 @@ static void initiator_go (uint16_t numMeasure)
 		HAL_GPIO_WritePin (LED_GPIO_Port,LED_Pin,GPIO_PIN_RESET);
 		while(TIM2->CNT - t1 < RNG_DELAY_MS*100);
 	}
-  while(frame_seq_nb_initiator % numMeasure != 0);
+  while(frame_seq_nb_initiator_long % numMeasure != 0);
 }
 
 /* @fn      send_log_msg
