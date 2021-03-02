@@ -229,9 +229,9 @@ uint64_t t2 = 0;
 
 dwt_txconfig_t    configTX;
 /* for uwb node */
-// tag_FSM_state_t state = INITIALIZE_RESPONDER;
+tag_FSM_state_t state = INITIALIZE_RESPONDER;
 /* for uwb board attached to drone */
-tag_FSM_state_t state = INITIALIZE_INITIATOR;
+// tag_FSM_state_t state = INITIALIZE_INITIATOR;
 
 /* Variable to set and select the configuration mode */
 configSel_t ConfigSel = ShortData_Fast;
@@ -239,8 +239,6 @@ configSel_t ConfigSel = ShortData_Fast;
 /* Buffer to save ranging distances */
 uint32_t numRanged = 0;
 double ranges[RANGE_BUF_SIZE];
-
-
 uint16_t numMeasure = NUM_MEASUREMENTS;
 
 /* USER CODE END PV */
@@ -263,7 +261,7 @@ static void initiator_go (uint16_t numMeasure);
 static void send_log_msg(uint8_t log_msg_buffer[UWB_MSG_BUF_LEN]);
 static void send_ack(void);
 static void send_report_msg(double distance);
-static double process_measurements(double ranges[numMeasure]);
+static double process_measurements(double ranges[NUM_MEASUREMENTS]);
 static void final_msg_get_ts(const uint8 *ts_field, uint32 *ts);
 static void final_msg_set_ts(uint8 *ts_field, uint64 ts);
 static void tx_conf_cb(const dwt_cb_data_t *);
@@ -427,14 +425,14 @@ int main(void)
         if((numRanged+1) % numMeasure == 0) // im numMeasure times has been ranged, report to initiator
         {
           double mean_distance = 0;
-          mean_distance = process_measurements(ranges);
+          uint32_t ranges_offset = (numRanged+1) - numMeasure;
+          mean_distance = process_measurements(ranges + ranges_offset);
           send_report_msg(mean_distance);
         }
         else
         {
           send_ack();
         }
-
 				state = RECEIVE_I;
 				break; 
 			
@@ -1200,6 +1198,7 @@ static void initiator_go (uint16_t numMeasure)
             if (memcmp(uwb_rx_buffer, rx_report_msg, ALL_MSG_COMMON_LEN) == 0)
             {
               distance = doubleFromBytes(uwb_rx_buffer, REPORT_MSG_DIST_IDX);
+              printf("%f\n", distance);
               frame_seq_nb_initiator_long++; /* only count up if ranging process has been successfully finished */
               frame_seq_nb_initiator = (uint8_t) frame_seq_nb_initiator_long;
             }
@@ -1325,7 +1324,7 @@ void send_report_msg(double distance)
   }
 }
 
-double process_measurements(double ranges[numMeasure])
+double process_measurements(double ranges[NUM_MEASUREMENTS])
 {
   double mean = 0;
   for(int i = 0; i < numMeasure; i++)
