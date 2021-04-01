@@ -54,7 +54,7 @@
 #define RANGE_BUF_SIZE 2000
 
 /* Number of Measurements to perform in each run */
-#define NUM_MEASUREMENTS 500
+#define NUM_MEASUREMENTS 5
 
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
 #define TX_ANT_DLY 16436
